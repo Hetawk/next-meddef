@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { db } from "@/lib/db";
 import { uploadModel } from "@/lib/ekd-assets";
 import { ModelVariant, ModelStage } from "@/generated/prisma/enums";
@@ -6,40 +7,53 @@ import { ModelVariant, ModelStage } from "@/generated/prisma/enums";
 // Allow up to 5 minutes — large ONNX files are chunked but still take time
 export const maxDuration = 300;
 
+// ── Zod schema ─────────────────────────────────────────────────────────────
+const UploadSchema = z.object({
+  variant: z.nativeEnum(ModelVariant, {
+    error: `variant must be one of: ${Object.values(ModelVariant).join(", ")}`,
+  }),
+  stage: z.nativeEnum(ModelStage, {
+    error: `stage must be one of: ${Object.values(ModelStage).join(", ")}`,
+  }),
+  accuracy: z
+    .string()
+    .optional()
+    .transform((v) => (v && v !== "" ? parseFloat(v) : undefined))
+    .pipe(
+      z.number().min(0).max(1).optional(),
+    ),
+});
+
 export async function POST(req: NextRequest) {
   try {
     const form = await req.formData();
 
     const file = form.get("file") as File | null;
-    const variant = form.get("variant") as string | null;
-    const stage = form.get("stage") as string | null;
-    const accuracyRaw = form.get("accuracy") as string | null;
-
-    if (!file || !variant || !stage) {
+    if (!file || file.size === 0) {
       return NextResponse.json(
-        { success: false, error: "file, variant, and stage are required" },
+        { success: false, error: "An ONNX file is required" },
         { status: 400 },
       );
     }
 
-    // Validate enums
-    if (!Object.values(ModelVariant).includes(variant as ModelVariant)) {
+    // Zod-validate the metadata fields
+    const parsed = UploadSchema.safeParse({
+      variant: form.get("variant"),
+      stage: form.get("stage"),
+      accuracy: form.get("accuracy") ?? undefined,
+    });
+
+    if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: `Invalid variant: ${variant}` },
-        { status: 400 },
-      );
-    }
-    if (!Object.values(ModelStage).includes(stage as ModelStage)) {
-      return NextResponse.json(
-        { success: false, error: `Invalid stage: ${stage}` },
+        {
+          success: false,
+          error: parsed.error.issues.map((i) => i.message).join("; "),
+        },
         { status: 400 },
       );
     }
 
-    const accuracy =
-      accuracyRaw != null && accuracyRaw !== ""
-        ? parseFloat(accuracyRaw)
-        : undefined;
+    const { variant, stage, accuracy } = parsed.data;
 
     // Upload to EKD Digital Assets (chunked automatically for files ≥ 10 MB)
     const asset = await uploadModel(file, { variant, stage });
@@ -55,9 +69,9 @@ export async function POST(req: NextRequest) {
       },
       create: {
         name: modelName,
-        displayName: `${variant} — ${stage.replace("_", " ")}`,
-        variant: variant as ModelVariant,
-        stage: stage as ModelStage,
+        displayName: `${variant} — ${stage.replace(/_/g, " ")}`,
+        variant,
+        stage,
         format: "ONNX",
         onnxPath: asset.download_url,
         ...(accuracy != null ? { accuracy } : {}),

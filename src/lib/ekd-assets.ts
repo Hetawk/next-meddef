@@ -1,8 +1,14 @@
 /**
  * EKD Digital Assets client — MedDef project
  * Handles ONNX model uploads to https://assets.andgroupco.com
- * - Files < 10 MB  → simple multipart POST /upload
- * - Files ≥ 10 MB  → 3-step terminal chunked API (initialize → chunk → finalize)
+ *
+ * Upload strategy (determined by file size):
+ *   < 10 MB  → simple multipart  POST /upload
+ *   ≥ 10 MB  → chunked            POST /upload/chunk  (n times) +
+ *                                  POST /upload/finalize
+ *
+ * Chunk route requires a per-chunk SHA-256 checksum (hex) for integrity.
+ * No initialize step needed — session is created on first chunk.
  */
 
 const API_BASE =
@@ -15,9 +21,9 @@ const API_KEY =
   process.env.EKD_DIGITAL_ASSETS_API_KEY ||
   "";
 
-/** 2 MB binary → ~2.7 MB base64 JSON per request — safe for Nginx default limits */
-const CHUNK_SIZE = 2 * 1024 * 1024;
-/** Files at or above this threshold use the terminal chunked upload */
+/** 5 MB per chunk — safe for Nginx default 8 MB body limit */
+const CHUNK_SIZE = 5 * 1024 * 1024;
+/** Files at or above this threshold use the chunked upload path */
 const CHUNKED_THRESHOLD = 10 * 1024 * 1024;
 
 export interface AssetUploadResponse {
@@ -85,71 +91,59 @@ export async function uploadModelAsset(
 }
 
 /**
- * Chunked terminal upload for large files (≥ 10 MB).
- * Uses the 3-step terminal API:
- *   POST /upload/terminal/initialize  — register session
- *   POST /upload/terminal/chunk       — send base64-encoded chunks sequentially
- *   POST /upload/terminal/finalize    — assemble & store the file
+ * Compute SHA-256 checksum of an ArrayBuffer and return hex string.
+ * Used for per-chunk integrity verification required by /upload/chunk.
+ */
+async function sha256hex(buffer: ArrayBuffer): Promise<string> {
+  const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+/**
+ * Chunked upload for large files (≥ 10 MB).
+ *
+ * Correct routes (NOT the terminal/* TTYD-based routes):
+ *   POST /upload/chunk    — FormData: chunk (Blob), uploadId, chunkId, checksum, totalChunks
+ *   POST /upload/finalize — JSON:     uploadId, totalChunks, totalSize, filename, mimeType,
+ *                                     clientId, projectName
+ *
+ * No initialize step — session is lazily created on first /upload/chunk call.
  */
 export async function uploadModelAssetChunked(
   file: File,
   meta: { variant: string; stage: string },
 ): Promise<AssetUploadResponse> {
   if (!API_KEY) {
-    throw new Error("EKD_DIGITAL_ASSETS_API_KEY is not configured");
+    throw new Error("EKD_DIGITAL_ASSETS_API_SECRET is not configured");
   }
 
   const base = API_BASE.replace(/\/+$/, "");
+  const origin = new URL(base).origin;
   const uploadId = crypto.randomUUID();
   const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
   const mimeType = file.type || "application/octet-stream";
+  const authBearer = `Bearer ${API_KEY}`;
 
-  const authHeaders = {
-    Authorization: `Bearer ${API_KEY}`,
-    "Content-Type": "application/json",
-  };
-
-  // ── Step 1: Initialize ──────────────────────────────────────────────────
-  const initRes = await fetch(`${base}/upload/terminal/initialize`, {
-    method: "POST",
-    headers: authHeaders,
-    body: JSON.stringify({
-      uploadId,
-      filename: file.name,
-      mimeType,
-      clientId: "meddef",
-      projectName: "MedDef",
-      totalChunks,
-      totalSize: file.size,
-    }),
-  });
-
-  if (!initRes.ok) {
-    const text = await initRes.text();
-    throw new Error(`Upload init failed (${initRes.status}): ${text}`);
-  }
-
-  // ── Step 2: Upload chunks sequentially ─────────────────────────────────
+  // ── Upload chunks sequentially ────────────────────────────────────────
   for (let i = 0; i < totalChunks; i++) {
     const start = i * CHUNK_SIZE;
     const end = Math.min(start + CHUNK_SIZE, file.size);
     const buffer = await file.slice(start, end).arrayBuffer();
-    // Server expects base64-encoded string in a JSON body
-    const chunkData = Buffer.from(buffer).toString("base64");
+    const checksum = await sha256hex(buffer);
 
-    const chunkRes = await fetch(`${base}/upload/terminal/chunk`, {
+    const fd = new FormData();
+    fd.append("chunk", new Blob([buffer], { type: mimeType }));
+    fd.append("uploadId", uploadId);
+    fd.append("chunkId", String(i));
+    fd.append("checksum", checksum);
+    fd.append("totalChunks", String(totalChunks));
+
+    const chunkRes = await fetch(`${base}/upload/chunk`, {
       method: "POST",
-      headers: authHeaders,
-      body: JSON.stringify({
-        uploadId,
-        chunkIndex: i,
-        totalChunks,
-        chunkData,
-        filename: file.name,
-        mimeType,
-        clientId: "meddef",
-        projectName: "MedDef",
-      }),
+      headers: { Authorization: authBearer },
+      body: fd,
     });
 
     if (!chunkRes.ok) {
@@ -160,12 +154,17 @@ export async function uploadModelAssetChunked(
     }
   }
 
-  // ── Step 3: Finalize ────────────────────────────────────────────────────
-  const finalRes = await fetch(`${base}/upload/terminal/finalize`, {
+  // ── Finalize — assemble chunks and store ──────────────────────────────
+  const finalRes = await fetch(`${base}/upload/finalize`, {
     method: "POST",
-    headers: authHeaders,
+    headers: {
+      Authorization: authBearer,
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({
       uploadId,
+      totalChunks,
+      totalSize: file.size,
       filename: file.name,
       mimeType,
       clientId: "meddef",
@@ -183,28 +182,26 @@ export async function uploadModelAssetChunked(
     throw new Error(data.error || "Finalize returned failure");
   }
 
-  // Server returns camelCase downloadUrl — normalise to download_url for consistency
+  // Server returns a relative downloadUrl like /assets/<id>
+  const downloadUrl = data.downloadUrl?.startsWith("http")
+    ? data.downloadUrl
+    : `${origin}${data.downloadUrl ?? `/assets/${data.assetId}`}`;
+
   return {
-    ...data,
-    id: data.assetId || data.id || "",
+    id: data.assetId || "",
     name: data.filename || file.name,
-    url: data.downloadUrl || "",
-    public_url: data.downloadUrl || "",
-    secure_url: data.downloadUrl || "",
-    download_url: data.downloadUrl || "",
+    url: downloadUrl,
+    public_url: downloadUrl,
+    secure_url: downloadUrl,
+    download_url: downloadUrl,
     asset_type: "documents",
     format: "ONNX",
     file_size: data.fileSize || file.size,
     mime_type: data.mimeType || mimeType,
     project_name: "MedDef",
-    tags: [
-      `meddef`,
-      `onnx`,
-      meta.variant.toLowerCase(),
-      meta.stage.toLowerCase(),
-    ],
-    storage_path: data.filePath || "",
-    created_at: new Date().toISOString(),
+    tags: ["meddef", "onnx", meta.variant.toLowerCase(), meta.stage.toLowerCase()],
+    storage_path: data.storagePath || data.filePath || "",
+    created_at: data.createdAt || new Date().toISOString(),
   } satisfies AssetUploadResponse;
 }
 
