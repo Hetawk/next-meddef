@@ -66,7 +66,7 @@ export default function ResultsPage() {
   );
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="space-y-6 w-full">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">
           Evaluation Results

@@ -32,7 +32,9 @@ export function Sidebar() {
           {APP.author}
         </p>
         <p className="text-indigo-400 font-medium">{APP.authorZh}</p>
-        <p className="mt-0.5 text-xs font-mono text-slate-500 tracking-widest">{APP.studentId}</p>
+        <p className="mt-0.5 text-xs font-mono text-slate-500 tracking-widest">
+          {APP.studentId}
+        </p>
       </div>
       <nav className="flex flex-col gap-0.5">
         {nav.map(({ href, label, icon: Icon }) => (

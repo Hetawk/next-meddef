@@ -25,7 +25,7 @@ export const ModelVariantSchema = z.enum([
 ]);
 export type ModelVariant = z.infer<typeof ModelVariantSchema>;
 
-export const ModelStageSchema = z.enum(["STAGE1", "DISTILL", "DISTILL_V2"]);
+export const ModelStageSchema = z.enum(["STAGE1", "DISTILL_V2"]);
 export type ModelStage = z.infer<typeof ModelStageSchema>;
 
 // ─── API request schemas ─────────────────────────────────────────────────────
@@ -80,48 +80,33 @@ export const DATASETS = {
     displayName: "Tuberculosis Chest X-Ray",
     description: "Binary classification: Normal vs Tuberculosis chest X-rays",
     classes: ["Normal", "Tuberculosis"],
+    onnxFile: "vista_no_def_tbcr.onnx",
+    paper: "VISTA (MedDef2)",
+    // Ultralytics DEFAULT_MEAN/STD: just ÷255, no mean subtraction
+    normMean: [0.0, 0.0, 0.0] as [number, number, number],
+    normStd: [1.0, 1.0, 1.0] as [number, number, number],
   },
-  ccts: {
-    name: "ccts",
-    displayName: "Chest CT Scan",
-    description: "4-class lung cancer classification from CT scans",
-    classes: [
-      "adenocarcinoma",
-      "large.cell.carcinoma",
-      "normal",
-      "squamous.cell.carcinoma",
-    ],
+  chest_xray: {
+    name: "chest_xray",
+    displayName: "Chest X-Ray (Pneumonia)",
+    description: "Binary classification: Normal vs Pneumonia chest X-rays",
+    classes: ["NORMAL", "PNEUMONIA"],
+    onnxFile: "meddef1_chest_xray.onnx",
+    paper: "MedDef1",
+    // Dataset-specific normalization (grayscale X-ray statistics from training)
+    normMean: [0.48230693, 0.48230693, 0.48230693] as [number, number, number],
+    normStd: [0.22157896, 0.22157896, 0.22157896] as [number, number, number],
   },
-  multic: {
-    name: "multic",
-    displayName: "Multi-Cancer",
-    description: "8-class multi-organ cancer classification",
-    classes: [
-      "all_leukemia",
-      "brain_cancer",
-      "breast_cancer",
-      "cervical_cancer",
-      "kidney_cancer",
-      "lung_colon_cancer",
-      "lymphoma",
-      "oral_cancer",
-    ],
-  },
-  scisic: {
-    name: "scisic",
-    displayName: "Skin Cancer (ISIC)",
-    description: "9-class dermoscopy classification",
-    classes: [
-      "actinic keratosis",
-      "basal cell carcinoma",
-      "dermatofibroma",
-      "melanoma",
-      "nevus",
-      "pigmented benign keratosis",
-      "seborrheic keratosis",
-      "squamous cell carcinoma",
-      "vascular lesion",
-    ],
+  roct: {
+    name: "roct",
+    displayName: "Retinal OCT",
+    description: "4-class retinal OCT classification: CNV, DME, Drusen, Normal",
+    classes: ["CNV", "DME", "DRUSEN", "NORMAL"],
+    onnxFile: "meddef1_roct.onnx",
+    paper: "MedDef1",
+    // Dataset-specific normalization (grayscale OCT statistics from training)
+    normMean: [0.19338988, 0.19338988, 0.19338988] as [number, number, number],
+    normStd: [0.1933612, 0.1933612, 0.1933612] as [number, number, number],
   },
 } as const;
 

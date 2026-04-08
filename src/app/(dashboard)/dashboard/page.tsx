@@ -10,6 +10,8 @@ import {
   GraduationCap,
   User,
   Hash,
+  Mail,
+  Phone,
 } from "lucide-react";
 
 const stats = [
@@ -45,8 +47,7 @@ const stats = [
 
 export default function DashboardPage() {
   return (
-    <div className="space-y-8 max-w-5xl">
-
+    <div className="space-y-8 w-full">
       {/* ── Hero header ─────────────────────────────────────────────────── */}
       <div className="rounded-xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-700 p-8 text-white shadow-lg">
         <div className="flex items-start justify-between gap-6 flex-wrap">
@@ -59,8 +60,8 @@ export default function DashboardPage() {
             </h1>
             <p className="text-indigo-200 text-sm max-w-xl leading-relaxed">
               A dual-frequency attention mechanism (DAAM) for defending medical
-              image classifiers against adversarial attacks across 4 datasets and
-              8 attack types.
+              image classifiers against adversarial attacks across 3 datasets
+              and 8 attack types.
             </p>
           </div>
           {/* Identity pill */}
@@ -69,17 +70,44 @@ export default function DashboardPage() {
               <User className="h-4 w-4 shrink-0 text-indigo-300" />
               <div>
                 <p className="font-semibold text-white">{APP.author}</p>
-                <p className="text-indigo-300 text-base font-medium">{APP.authorZh}</p>
+                <p className="text-indigo-300 text-base font-medium">
+                  {APP.authorZh}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2 text-indigo-200">
               <Hash className="h-4 w-4 shrink-0 text-indigo-300" />
-              <span className="font-mono text-sm tracking-widest">{APP.studentId}</span>
+              <span className="font-mono text-sm tracking-widest">
+                {APP.studentId}
+              </span>
+            </div>
+            <div className="flex items-start gap-2 text-indigo-200 border-t border-white/10 pt-2.5">
+              <Mail className="h-4 w-4 shrink-0 text-indigo-300 mt-0.5" />
+              <div className="space-y-0.5">
+                <a
+                  href={`mailto:${APP.emailStudent}`}
+                  className="block text-indigo-100 hover:text-white text-xs truncate"
+                >
+                  {APP.emailStudent}
+                </a>
+                <a
+                  href={`mailto:${APP.emailPersonal}`}
+                  className="block text-indigo-100 hover:text-white text-xs truncate"
+                >
+                  {APP.emailPersonal}
+                </a>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-indigo-200">
+              <Phone className="h-4 w-4 shrink-0 text-indigo-300" />
+              <span className="text-indigo-100 text-xs">{APP.phone}</span>
             </div>
             <div className="flex items-center gap-2 text-indigo-200 border-t border-white/10 pt-2.5">
               <GraduationCap className="h-4 w-4 shrink-0 text-indigo-300" />
               <div>
-                <p className="text-xs text-indigo-400 uppercase tracking-wide">Supervisor</p>
+                <p className="text-xs text-indigo-400 uppercase tracking-wide">
+                  Supervisor
+                </p>
                 <p className="font-medium text-white">{APP.supervisor}</p>
                 <p className="text-indigo-300">{APP.supervisorZh}</p>
               </div>

@@ -62,4 +62,4 @@ next-env.d.ts
 
 # ── Large binary / dataset files (store in cloud storage, not git) ────────────
 /public/models/
-/public/datasets/
+# /public/datasets/ is tracked — sample images are small and version-controlled

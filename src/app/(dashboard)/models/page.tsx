@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Cpu, Loader2 } from "lucide-react";
+import { Cpu, AlertCircle, CheckCircle2, Clock } from "lucide-react";
 
 interface ModelRow {
   id: string;
@@ -14,87 +14,152 @@ interface ModelRow {
   accuracy: number | null;
   datasetId: string | null;
   dataset: { name: string } | null;
-  createdAt: string;
 }
 
-const VARIANT_COLOR: Record<string, string> = {
-  FULL: "bg-indigo-50 text-indigo-700",
-  NO_DEF: "bg-slate-100 text-slate-600",
-  NO_FREQ: "bg-amber-50 text-amber-700",
-  NO_PATCH: "bg-orange-50 text-orange-700",
-  NO_CBAM: "bg-pink-50 text-pink-700",
-  BASELINE: "bg-emerald-50 text-emerald-700",
-};
+// Static model matrix — always visible regardless of DB status
+const VARIANTS: {
+  key: string;
+  label: string;
+  description: string;
+  color: string;
+  iconColor: string;
+  primary?: boolean;
+}[] = [
+  {
+    key: "NO_DEF",
+    label: "NO_DEF — Main Model",
+    description:
+      "Primary deployment model · full DAAM architecture (DISTILL_V2 final)",
+    color: "bg-indigo-50 text-indigo-700",
+    iconColor: "bg-indigo-600",
+    primary: true,
+  },
+  {
+    key: "FULL",
+    label: "FULL (DAAM + Defense)",
+    description: "Complete model with adversarial defense module enabled",
+    color: "bg-violet-50 text-violet-700",
+    iconColor: "bg-violet-600",
+  },
+  {
+    key: "NO_FREQ",
+    label: "NO_FREQ",
+    description: "Ablation: no dual-frequency attention branch",
+    color: "bg-amber-50 text-amber-700",
+    iconColor: "bg-amber-500",
+  },
+  {
+    key: "NO_PATCH",
+    label: "NO_PATCH",
+    description: "Ablation: no patch attention module",
+    color: "bg-orange-50 text-orange-700",
+    iconColor: "bg-orange-500",
+  },
+  {
+    key: "NO_CBAM",
+    label: "NO_CBAM",
+    description: "Ablation: no CBAM channel attention",
+    color: "bg-pink-50 text-pink-700",
+    iconColor: "bg-pink-500",
+  },
+  {
+    key: "BASELINE",
+    label: "BASELINE (ResNet-18)",
+    description: "Standard ResNet-18 without any attention or defense",
+    color: "bg-emerald-50 text-emerald-700",
+    iconColor: "bg-emerald-600",
+  },
+];
 
-const STAGE_LABEL: Record<string, string> = {
-  STAGE1: "Stage 1",
-  DISTILL: "Distill v1",
-  DISTILL_V2: "Distill v2",
-};
+const STAGES = [
+  {
+    key: "STAGE1",
+    label: "Stage 1",
+    desc: "Full-parameter supervised training",
+  },
+  {
+    key: "DISTILL_V2",
+    label: "Distill v2 (Final)",
+    desc: "Final model · enhanced distillation with adversarial fine-tuning",
+  },
+];
 
 export default function ModelsPage() {
-  const [models, setModels] = useState<ModelRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [dbModels, setDbModels] = useState<ModelRow[]>([]);
+  const [dbError, setDbError] = useState(false);
+  const [dbLoaded, setDbLoaded] = useState(false);
 
   useEffect(() => {
     fetch("/api/models")
       .then((r) => r.json())
       .then((j) => {
-        if (j.success) setModels(j.data);
-        else setError(j.error);
+        if (j.success) setDbModels(j.data);
+        else setDbError(true);
       })
-      .catch(() => setError("Failed to load models"))
-      .finally(() => setLoading(false));
+      .catch(() => setDbError(true))
+      .finally(() => setDbLoaded(true));
   }, []);
 
-  // Group by variant
-  const grouped = models.reduce<Record<string, ModelRow[]>>((acc, m) => {
-    (acc[m.variant] ??= []).push(m);
+  // Index DB rows by "variant|stage" for lookup
+  const dbIndex = dbModels.reduce<Record<string, ModelRow>>((acc, m) => {
+    acc[`${m.variant}|${m.stage}`] = m;
     return acc;
   }, {});
 
   return (
-    <div className="space-y-6 max-w-5xl">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Models</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          All registered MedDef model variants and their staged exports
-        </p>
+    <div className="space-y-6 w-full">
+      {/* Header */}
+      <div className="flex items-start justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Models</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            MedDef model variants and their training stages (6 variants × 2
+            stages)
+          </p>
+        </div>
+        {dbLoaded && (
+          <div
+            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border ${
+              dbError
+                ? "bg-amber-50 text-amber-700 border-amber-200"
+                : "bg-emerald-50 text-emerald-700 border-emerald-200"
+            }`}
+          >
+            {dbError ? (
+              <>
+                <AlertCircle className="h-3.5 w-3.5" /> DB offline — static view
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="h-3.5 w-3.5" /> {dbModels.length}{" "}
+                models registered
+              </>
+            )}
+          </div>
+        )}
       </div>
 
-      {loading && (
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading models…
-        </div>
-      )}
-
-      {error && <p className="text-sm text-red-600">{error}</p>}
-
-      {!loading && !error && models.length === 0 && (
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-slate-400">
-              No models registered yet. POST to{" "}
-              <code className="text-xs rounded bg-slate-100 px-1.5 py-0.5">
-                /api/models
-              </code>{" "}
-              or run the seed script to populate.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {Object.entries(grouped).map(([variant, rows]) => (
-        <Card key={variant}>
-          <CardHeader>
+      {/* Model cards */}
+      {VARIANTS.map((v) => (
+        <Card key={v.key}>
+          <CardHeader className="pb-3">
             <div className="flex items-center gap-3">
               <div
-                className={`rounded-lg p-2 ${VARIANT_COLOR[variant] ?? "bg-slate-50 text-slate-600"}`}
+                className={`rounded-lg p-2 ${v.iconColor} text-white shrink-0`}
               >
-                <Cpu className="h-5 w-5" />
+                <Cpu className="h-4 w-4" />
               </div>
-              <CardTitle className="text-base">{variant}</CardTitle>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <CardTitle className="text-base">{v.label}</CardTitle>
+                  {v.primary && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-600 text-white font-medium">
+                      Primary
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">{v.description}</p>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -103,52 +168,72 @@ export default function ModelsPage() {
                 <thead>
                   <tr className="border-b border-slate-100 text-xs font-medium text-slate-500 uppercase tracking-wide">
                     <th className="pb-2 text-left">Stage</th>
-                    <th className="pb-2 text-left">Format</th>
-                    <th className="pb-2 text-left">Dataset</th>
+                    <th className="pb-2 text-left">Description</th>
+                    <th className="pb-2 text-left">Status</th>
                     <th className="pb-2 text-right">Accuracy</th>
                     <th className="pb-2 text-left pl-4">ONNX Path</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {rows.map((m) => (
-                    <tr
-                      key={m.id}
-                      className="hover:bg-slate-50 transition-colors"
-                    >
-                      <td className="py-2.5">
-                        <Badge variant="outline" className="text-xs">
-                          {STAGE_LABEL[m.stage] ?? m.stage}
-                        </Badge>
-                      </td>
-                      <td className="py-2.5">
-                        <Badge
-                          variant={
-                            m.format === "ONNX" ? "success" : "secondary"
-                          }
-                          className="text-xs"
-                        >
-                          {m.format}
-                        </Badge>
-                      </td>
-                      <td className="py-2.5 text-slate-600">
-                        {m.dataset?.name ?? (
-                          <span className="text-slate-300">—</span>
-                        )}
-                      </td>
-                      <td className="py-2.5 text-right tabular-nums text-slate-700">
-                        {m.accuracy != null ? (
-                          `${(m.accuracy * 100).toFixed(2)}%`
-                        ) : (
-                          <span className="text-slate-300">—</span>
-                        )}
-                      </td>
-                      <td className="py-2.5 pl-4 font-mono text-xs text-slate-500 truncate max-w-xs">
-                        {m.onnxPath ?? (
-                          <span className="text-slate-300">not exported</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {STAGES.map((s) => {
+                    const row = dbIndex[`${v.key}|${s.key}`];
+                    return (
+                      <tr
+                        key={s.key}
+                        className="hover:bg-slate-50 transition-colors"
+                      >
+                        <td className="py-2.5 pr-4">
+                          <Badge
+                            variant="outline"
+                            className="text-xs whitespace-nowrap"
+                          >
+                            {s.label}
+                          </Badge>
+                        </td>
+                        <td className="py-2.5 text-xs text-slate-500 pr-4">
+                          {s.desc}
+                        </td>
+                        <td className="py-2.5">
+                          {row ? (
+                            <Badge variant="success" className="text-xs gap-1">
+                              <CheckCircle2 className="h-3 w-3" /> Registered
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="secondary"
+                              className="text-xs gap-1 text-slate-400"
+                            >
+                              <Clock className="h-3 w-3" /> Pending export
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="py-2.5 text-right tabular-nums">
+                          {row?.accuracy != null ? (
+                            <span
+                              className={`font-semibold text-sm ${
+                                row.accuracy >= 0.7
+                                  ? "text-emerald-600"
+                                  : row.accuracy >= 0.5
+                                    ? "text-amber-600"
+                                    : "text-red-500"
+                              }`}
+                            >
+                              {(row.accuracy * 100).toFixed(1)}%
+                            </span>
+                          ) : (
+                            <span className="text-slate-300 text-xs">—</span>
+                          )}
+                        </td>
+                        <td className="py-2.5 pl-4 font-mono text-xs text-slate-500 truncate max-w-[200px]">
+                          {row?.onnxPath ?? (
+                            <span className="text-slate-300 not-italic font-sans">
+                              not exported
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
