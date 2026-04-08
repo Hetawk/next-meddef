@@ -28,16 +28,64 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Stream the incoming FormData straight through to the assets server
+  // Parse incoming FormData and rebuild it to send upstream
+  // (passing the parsed FormData object directly can corrupt the multipart boundary)
   const form = await req.formData();
 
-  const upstream = await fetch(`${ASSETS_BASE}/upload/chunk`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${API_KEY}` },
-    body: form,
-  });
+  const chunk = form.get("chunk") as Blob | null;
+  const uploadId = form.get("uploadId") as string | null;
+  const chunkId = form.get("chunkId") as string | null;
+  const checksum = form.get("checksum") as string | null;
+  const totalChunks = form.get("totalChunks") as string | null;
 
-  const data = await upstream.json();
+  if (!chunk || !uploadId || chunkId === null || !checksum || !totalChunks) {
+    return NextResponse.json(
+      { success: false, error: "Missing required chunk fields" },
+      { status: 400 },
+    );
+  }
+
+  const outForm = new FormData();
+  outForm.append("chunk", chunk);
+  outForm.append("uploadId", uploadId);
+  outForm.append("chunkId", chunkId);
+  outForm.append("checksum", checksum);
+  outForm.append("totalChunks", totalChunks);
+
+  let upstream: Response;
+  try {
+    upstream = await fetch(`${ASSETS_BASE}/upload/chunk`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${API_KEY}` },
+      body: outForm,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[chunk proxy] network error:", msg);
+    return NextResponse.json(
+      { success: false, error: `Network error reaching assets server: ${msg}` },
+      { status: 502 },
+    );
+  }
+
+  const raw = await upstream.text();
+  console.log(
+    `[chunk proxy] assets server → ${upstream.status} | body: ${raw.slice(0, 300)}`,
+  );
+
+  // Parse JSON safely — assets server may return HTML on Nginx errors (413, 502…)
+  let data: unknown;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    return NextResponse.json(
+      {
+        success: false,
+        error: `Assets server error (${upstream.status}): ${raw.slice(0, 200)}`,
+      },
+      { status: upstream.ok ? 502 : upstream.status },
+    );
+  }
 
   return NextResponse.json(data, { status: upstream.status });
 }
