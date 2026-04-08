@@ -2,7 +2,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { APP } from "@/lib/config";
 import { DATASETS } from "@/types/index";
-import { FlaskConical, Database, Cpu, ShieldCheck } from "lucide-react";
+import {
+  FlaskConical,
+  Database,
+  Cpu,
+  ShieldCheck,
+  GraduationCap,
+  User,
+  Hash,
+} from "lucide-react";
 
 const stats = [
   {
@@ -37,13 +45,50 @@ const stats = [
 
 export default function DashboardPage() {
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">{APP.name}</h1>
-        <p className="mt-1 text-sm text-slate-500 max-w-2xl">{APP.title}</p>
+    <div className="space-y-8 max-w-5xl">
+
+      {/* ── Hero header ─────────────────────────────────────────────────── */}
+      <div className="rounded-xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-700 p-8 text-white shadow-lg">
+        <div className="flex items-start justify-between gap-6 flex-wrap">
+          <div className="space-y-3 flex-1 min-w-0">
+            <Badge className="bg-white/20 text-white border-white/30 hover:bg-white/30 text-xs font-medium tracking-wide">
+              Master&apos;s Thesis · 2026
+            </Badge>
+            <h1 className="text-3xl font-bold leading-snug tracking-tight">
+              {APP.title}
+            </h1>
+            <p className="text-indigo-200 text-sm max-w-xl leading-relaxed">
+              A dual-frequency attention mechanism (DAAM) for defending medical
+              image classifiers against adversarial attacks across 4 datasets and
+              8 attack types.
+            </p>
+          </div>
+          {/* Identity pill */}
+          <div className="rounded-xl bg-white/10 border border-white/20 p-4 text-sm space-y-2.5 min-w-[200px]">
+            <div className="flex items-center gap-2 text-indigo-100">
+              <User className="h-4 w-4 shrink-0 text-indigo-300" />
+              <div>
+                <p className="font-semibold text-white">{APP.author}</p>
+                <p className="text-indigo-300 text-base font-medium">{APP.authorZh}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-indigo-200">
+              <Hash className="h-4 w-4 shrink-0 text-indigo-300" />
+              <span className="font-mono text-sm tracking-widest">{APP.studentId}</span>
+            </div>
+            <div className="flex items-center gap-2 text-indigo-200 border-t border-white/10 pt-2.5">
+              <GraduationCap className="h-4 w-4 shrink-0 text-indigo-300" />
+              <div>
+                <p className="text-xs text-indigo-400 uppercase tracking-wide">Supervisor</p>
+                <p className="font-medium text-white">{APP.supervisor}</p>
+                <p className="text-indigo-300">{APP.supervisorZh}</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Stats */}
+      {/* ── Stats ───────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {stats.map(({ label, value, icon: Icon, bg, border }) => (
           <Card key={label} className={`border ${border}`}>
@@ -62,7 +107,7 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Datasets summary */}
+      {/* ── Datasets summary ────────────────────────────────────────────── */}
       <Card>
         <CardHeader>
           <CardTitle>Supported Datasets</CardTitle>
@@ -96,22 +141,6 @@ export default function DashboardPage() {
                 </div>
               </div>
             ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Author info */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-6 text-sm text-slate-500">
-            <span>
-              <span className="font-medium text-slate-700">Author:</span>{" "}
-              {APP.author} ({APP.authorZh})
-            </span>
-            <span>
-              <span className="font-medium text-slate-700">Supervisor:</span>{" "}
-              {APP.supervisor} ({APP.supervisorZh})
-            </span>
           </div>
         </CardContent>
       </Card>

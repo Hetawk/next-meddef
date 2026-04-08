@@ -28,9 +28,11 @@ export function Sidebar() {
         <span className="text-lg font-bold text-white tracking-tight">
           {APP.name}
         </span>
-        <p className="mt-1 text-xs text-slate-400 leading-tight">
+        <p className="mt-1 text-sm font-medium text-slate-200 leading-tight">
           {APP.author}
         </p>
+        <p className="text-indigo-400 font-medium">{APP.authorZh}</p>
+        <p className="mt-0.5 text-xs font-mono text-slate-500 tracking-widest">{APP.studentId}</p>
       </div>
       <nav className="flex flex-col gap-0.5">
         {nav.map(({ href, label, icon: Icon }) => (
