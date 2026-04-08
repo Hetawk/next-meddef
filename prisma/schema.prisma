@@ -1,0 +1,129 @@
+// MedDef: An Attention Based Model For Adversarial Resilience in Medical Imaging
+// Author: Enoch Kwateh Dongbo (东博)
+// Supervisor: 牛四杰
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Datasets ────────────────────────────────────────────────────────────────
+
+model Dataset {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  displayName String
+  description String?
+  classes     String[]
+  imageCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  inferences  Inference[]
+  evaluations Evaluation[]
+
+  @@map("datasets")
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
+model Model {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  displayName String
+  variant     ModelVariant
+  stage       ModelStage
+  format      ModelFormat  @default(ONNX)
+  onnxPath    String?
+  accuracy    Float?
+  description String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  inferences  Inference[]
+  evaluations Evaluation[]
+
+  @@map("models")
+}
+
+enum ModelVariant {
+  FULL
+  NO_DEF
+  NO_FREQ
+  NO_PATCH
+  NO_CBAM
+  BASELINE
+}
+
+enum ModelStage {
+  STAGE1
+  DISTILL
+  DISTILL_V2
+}
+
+enum ModelFormat {
+  PYTORCH
+  ONNX
+}
+
+// ─── Inference Sessions ───────────────────────────────────────────────────────
+
+model Inference {
+  id            String      @id @default(cuid())
+  datasetId     String
+  modelId       String
+  imageName     String
+  imageUrl      String?
+  prediction    String
+  confidence    Float
+  probabilities Json
+  attack        AttackType?
+  epsilon       Float?
+  defenseHeld   Boolean?
+  elapsedMs     Float?
+  createdAt     DateTime    @default(now())
+
+  dataset       Dataset     @relation(fields: [datasetId], references: [id])
+  model         Model       @relation(fields: [modelId], references: [id])
+
+  @@map("inferences")
+}
+
+enum AttackType {
+  CLEAN
+  FGSM
+  PGD
+  BIM
+  MIM
+  CW
+  DEEPFOOL
+  APGD
+  SQUARE
+}
+
+// ─── Batch Evaluations ────────────────────────────────────────────────────────
+
+model Evaluation {
+  id            String     @id @default(cuid())
+  datasetId     String
+  modelId       String
+  attack        AttackType
+  epsilon       Float
+  cleanAccuracy Float?
+  advAccuracy   Float?
+  defenseRate   Float?
+  totalImages   Int        @default(0)
+  elapsedMs     Float?
+  createdAt     DateTime   @default(now())
+
+  dataset       Dataset    @relation(fields: [datasetId], references: [id])
+  model         Model      @relation(fields: [modelId], references: [id])
+
+  @@unique([datasetId, modelId, attack, epsilon])
+  @@map("evaluations")
+}
+
