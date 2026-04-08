@@ -137,17 +137,20 @@ export default function ModelsPage() {
 
   // Upload modal state
   const [showUpload, setShowUpload] = useState(false);
+  const [uploadTab, setUploadTab] = useState<"file" | "url">("file");
   const [uploadVariant, setUploadVariant] = useState("NO_DEF");
   const [uploadStage, setUploadStage] = useState("DISTILL_V2");
   const [uploadAccuracy, setUploadAccuracy] = useState("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0); // 0-100
+  // Register-by-URL tab state
+  const [registerUrl, setRegisterUrl] = useState("");
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadDone, setUploadDone] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const CHUNK_SIZE = 5 * 1024 * 1024; // 5 MB — matches server limit
+  const CHUNK_SIZE = 512 * 1024; // 512 KB — safe under Nginx 1 MB client_max_body_size
 
   async function sha256hex(buffer: ArrayBuffer): Promise<string> {
     const hash = await crypto.subtle.digest("SHA-256", buffer);
@@ -157,6 +160,7 @@ export default function ModelsPage() {
   }
 
   const resetUpload = () => {
+    setUploadTab("file");
     setUploadVariant("NO_DEF");
     setUploadStage("DISTILL_V2");
     setUploadAccuracy("");
@@ -164,7 +168,38 @@ export default function ModelsPage() {
     setUploadError(null);
     setUploadDone(null);
     setUploadProgress(0);
+    setRegisterUrl("");
     if (fileRef.current) fileRef.current.value = "";
+  };
+
+  const handleRegister = async () => {
+    if (!registerUrl.trim()) {
+      setUploadError("Enter the model URL.");
+      return;
+    }
+    setUploading(true);
+    setUploadError(null);
+    setUploadDone(null);
+    try {
+      const res = await fetch("/api/models/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: registerUrl.trim(),
+          variant: uploadVariant,
+          stage: uploadStage,
+          ...(uploadAccuracy ? { accuracy: parseFloat(uploadAccuracy) } : {}),
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || "Register failed");
+      setUploadDone(registerUrl.trim());
+      fetch("/api/models").then((r) => r.json()).then((j) => { if (j.success) setDbModels(j.data); });
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : "Register failed");
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleUpload = async () => {
@@ -236,7 +271,9 @@ export default function ModelsPage() {
       // Refresh model list
       fetch("/api/models")
         .then((r) => r.json())
-        .then((j) => { if (j.success) setDbModels(j.data); });
+        .then((j) => {
+          if (j.success) setDbModels(j.data);
+        });
     } catch (e) {
       setUploadError(e instanceof Error ? e.message : "Upload failed");
     } finally {
@@ -535,10 +572,10 @@ export default function ModelsPage() {
                   </div>
                   <div>
                     <h2 className="text-lg font-bold tracking-tight">
-                      Upload ONNX Model
+                      {uploadTab === "file" ? "Upload ONNX Model" : "Register Model URL"}
                     </h2>
                     <p className="text-indigo-200 text-xs mt-0.5">
-                      Save model to EKD Digital Assets
+                      {uploadTab === "file" ? "Save model to EKD Digital Assets" : "Register a VPS-hosted model by URL"}
                     </p>
                   </div>
                 </div>
@@ -549,11 +586,26 @@ export default function ModelsPage() {
                   <X className="h-5 w-5" />
                 </button>
               </div>
+              {/* Tab switcher */}
+              <div className="flex gap-1 mt-5 bg-white/10 rounded-xl p-1">
+                <button
+                  onClick={() => { setUploadTab("file"); setUploadError(null); setUploadDone(null); }}
+                  className={`flex-1 text-xs font-semibold py-1.5 rounded-lg transition-colors ${uploadTab === "file" ? "bg-white text-indigo-700" : "text-white/70 hover:text-white"}`}
+                >
+                  Upload File
+                </button>
+                <button
+                  onClick={() => { setUploadTab("url"); setUploadError(null); setUploadDone(null); }}
+                  className={`flex-1 text-xs font-semibold py-1.5 rounded-lg transition-colors ${uploadTab === "url" ? "bg-white text-indigo-700" : "text-white/70 hover:text-white"}`}
+                >
+                  Register by URL
+                </button>
+              </div>
             </div>
 
             {/* Body */}
             <div className="bg-gradient-to-b from-indigo-50 to-white px-8 py-7 space-y-5">
-              {/* Variant + Stage row */}
+              {/* Variant + Stage row — shared across both tabs */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="block text-sm font-semibold text-indigo-900">
@@ -609,42 +661,61 @@ export default function ModelsPage() {
                 />
               </div>
 
-              {/* File drop zone */}
-              <div className="space-y-1.5">
-                <label className="block text-sm font-semibold text-indigo-900">
-                  ONNX File
-                </label>
-                <label
-                  className={`flex flex-col items-center justify-center gap-2 w-full border-2 border-dashed rounded-xl px-4 py-8 cursor-pointer transition ${
-                    uploadFile
-                      ? "border-indigo-500 bg-indigo-100 text-indigo-700"
-                      : "border-indigo-200 bg-white hover:border-indigo-400 hover:bg-indigo-50 text-indigo-400"
-                  }`}
-                >
-                  <Upload
-                    className={`h-7 w-7 ${uploadFile ? "text-indigo-600" : "text-indigo-300"}`}
-                  />
-                  <span className="text-sm font-semibold">
-                    {uploadFile
-                      ? uploadFile.name
-                      : "Click to select .onnx file"}
-                  </span>
-                  {uploadFile && (
-                    <span className="text-xs font-medium text-indigo-500">
-                      {(uploadFile.size / 1024 / 1024).toFixed(2)} MB
+              {uploadTab === "file" ? (
+                /* ── File upload tab ─────────────────────────────── */
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-semibold text-indigo-900">
+                    ONNX File
+                  </label>
+                  <label
+                    className={`flex flex-col items-center justify-center gap-2 w-full border-2 border-dashed rounded-xl px-4 py-8 cursor-pointer transition ${
+                      uploadFile
+                        ? "border-indigo-500 bg-indigo-100 text-indigo-700"
+                        : "border-indigo-200 bg-white hover:border-indigo-400 hover:bg-indigo-50 text-indigo-400"
+                    }`}
+                  >
+                    <Upload
+                      className={`h-7 w-7 ${uploadFile ? "text-indigo-600" : "text-indigo-300"}`}
+                    />
+                    <span className="text-sm font-semibold">
+                      {uploadFile
+                        ? uploadFile.name
+                        : "Click to select .onnx file"}
                     </span>
-                  )}
+                    {uploadFile && (
+                      <span className="text-xs font-medium text-indigo-500">
+                        {(uploadFile.size / 1024 / 1024).toFixed(2)} MB
+                      </span>
+                    )}
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      accept=".onnx"
+                      className="sr-only"
+                      onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                </div>
+              ) : (
+                /* ── Register by URL tab ─────────────────────────── */
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-semibold text-indigo-900">
+                    Model URL
+                  </label>
                   <input
-                    ref={fileRef}
-                    type="file"
-                    accept=".onnx"
-                    className="sr-only"
-                    onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+                    type="url"
+                    placeholder="https://mail.es.ekddigital.com/models/2026/model.onnx"
+                    value={registerUrl}
+                    onChange={(e) => setRegisterUrl(e.target.value)}
+                    className="w-full border-2 border-indigo-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-indigo-300 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-400 transition"
                   />
-                </label>
-              </div>
+                  <p className="text-xs text-indigo-400 mt-1">
+                    SCP the file to the VPS first, then enter its public URL here.
+                  </p>
+                </div>
+              )}
 
-              {uploading && (
+              {uploading && uploadTab === "file" && (
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-xs text-indigo-600 font-medium">
                     <span>Uploading…</span>
@@ -670,14 +741,16 @@ export default function ModelsPage() {
                 <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl px-4 py-4">
                   <CheckCircle2 className="h-5 w-5 shrink-0" />
                   <div className="text-sm">
-                    <p className="font-semibold">Upload successful!</p>
+                    <p className="font-semibold">
+                      {uploadTab === "file" ? "Upload successful!" : "Model registered!"}
+                    </p>
                     <a
                       href={uploadDone}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs underline font-medium flex items-center gap-1 mt-0.5"
                     >
-                      Open download link <ExternalLink className="h-3 w-3" />
+                      {uploadTab === "file" ? "Open download link" : "Open URL"} <ExternalLink className="h-3 w-3" />
                     </a>
                   </div>
                 </div>
@@ -694,14 +767,23 @@ export default function ModelsPage() {
                 </Button>
                 <Button
                   className="flex-1 rounded-xl h-11 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-semibold shadow-lg shadow-indigo-300 gap-2 disabled:opacity-60"
-                  onClick={handleUpload}
-                  disabled={uploading || !uploadFile}
+                  onClick={uploadTab === "file" ? handleUpload : handleRegister}
+                  disabled={uploading || (uploadTab === "file" ? !uploadFile : !registerUrl.trim())}
                 >
                   {uploading ? (
-                    uploadProgress < 100 ? `Uploading… ${uploadProgress}%` : "Finalizing…"
+                    uploadTab === "file" ? (
+                      uploadProgress < 100 ? (
+                        `Uploading… ${uploadProgress}%`
+                      ) : (
+                        "Finalizing…"
+                      )
+                    ) : (
+                      "Registering…"
+                    )
                   ) : (
                     <>
-                      <Upload className="h-4 w-4" /> Upload Model
+                      <Upload className="h-4 w-4" />{" "}
+                      {uploadTab === "file" ? "Upload Model" : "Register Model"}
                     </>
                   )}
                 </Button>
