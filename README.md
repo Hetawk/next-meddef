@@ -1,36 +1,146 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MedDef
+
+**MedDef: An Attention Based Model For Adversarial Resilience in Medical Imaging**
+
+> Author: Enoch Kwateh Dongbo (东博)  
+> Supervisor: Niu Sijie (牛四杰)
+
+A Next.js web application for running and visualizing adversarial robustness evaluations of the MedDef model — a dual-frequency attention mechanism (DAAM) designed to defend medical image classifiers against adversarial attacks.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Framework | Next.js 16 (App Router, Turbopack) |
+| Language | TypeScript 5 |
+| ORM | Prisma 7 (PostgreSQL, driver adapter) |
+| Styling | Tailwind CSS v4 + shadcn-style components |
+| Validation | Zod |
+| Forms | React Hook Form + @hookform/resolvers |
+| Inference | onnxruntime-web |
+| Icons | lucide-react |
+
+---
+
+## Features
+
+- **Dashboard** — overview of datasets, model variants, and attack coverage
+- **Inference** — upload a medical image, select a model and attack type, run ONNX inference in-browser with probability bars
+- **Datasets** — browse the 4 supported datasets (TBCR, CCTS, MultiCancer, ISIC skin)
+- **Models** — view all registered model variants grouped by architecture (FULL / NO_DEF / NO_FREQ / NO_PATCH / NO_CBAM / BASELINE) across training stages
+- **Results** — accuracy-vs-epsilon tables for each attack type, color-coded by robustness threshold
+
+---
+
+## Datasets
+
+| Key | Name | Classes |
+|-----|------|---------|
+| `tbcr` | Tuberculosis Chest X-Ray | 2 (Normal, Tuberculosis) |
+| `ccts` | Chest CT Scan | 4 (lung cancer subtypes) |
+| `multic` | Multi-Cancer | 8 (multi-organ) |
+| `scisic` | Skin Cancer (ISIC) | 9 (dermoscopy) |
+
+---
 
 ## Getting Started
 
-First, run the development server:
+### 1. Clone & install
+
+```bash
+git clone https://github.com/Hetawk/next-meddef.git
+cd next-meddef
+npm install
+```
+
+### 2. Configure environment
+
+```bash
+cp .env.example .env
+# Edit .env and set DATABASE_URL to your PostgreSQL connection string
+```
+
+### 3. Set up the database
+
+```bash
+npm run db:migrate    # create tables
+npm run db:generate   # regenerate Prisma client
+```
+
+### 4. Add ONNX models (optional)
+
+Place exported `.onnx` files in:
+```
+public/models/onnx/<variant>_<stage>.onnx
+```
+
+### 5. Run the dev server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) — it redirects automatically to `/dashboard`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Scripts
 
-## Learn More
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server |
+| `npm run build` | Production build |
+| `npm run lint` | ESLint |
+| `npm run db:generate` | Regenerate Prisma client |
+| `npm run db:migrate` | Run database migrations |
+| `npm run db:studio` | Open Prisma Studio |
+| `npm run db:seed` | Seed initial data |
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## API Routes
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Method | Route | Description |
+|--------|-------|-------------|
+| GET | `/api/datasets` | List datasets |
+| POST | `/api/datasets` | Seed datasets from constants |
+| GET | `/api/models` | List models |
+| GET | `/api/inferences` | List inferences (filterable) |
+| POST | `/api/inferences` | Run and record an inference |
+| GET | `/api/evaluations` | List evaluations (filterable) |
+| POST | `/api/evaluations` | Upsert an evaluation result |
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Project Structure
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+src/
+├── app/
+│   ├── (dashboard)/          # Route group — sidebar layout
+│   │   ├── dashboard/        # Overview page
+│   │   ├── inference/        # ONNX inference UI
+│   │   ├── datasets/         # Dataset browser
+│   │   ├── models/           # Model registry
+│   │   └── results/          # Evaluation results
+│   ├── api/                  # REST API routes
+│   └── layout.tsx
+├── components/
+│   ├── shared/sidebar.tsx
+│   └── ui/                   # Button, Card, Badge, Input, Select
+├── lib/
+│   ├── config.ts             # APP constants (title, author, etc.)
+│   ├── db.ts                 # Prisma client singleton
+│   └── utils.ts              # cn(), formatConfidence(), etc.
+└── types/index.ts            # Zod schemas + dataset/attack constants
+prisma/
+└── schema.prisma             # Database schema
+```
+
+---
+
+## License
+
+MIT
