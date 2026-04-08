@@ -142,9 +142,19 @@ export default function ModelsPage() {
   const [uploadAccuracy, setUploadAccuracy] = useState("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0); // 0-100
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadDone, setUploadDone] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const CHUNK_SIZE = 5 * 1024 * 1024; // 5 MB — matches server limit
+
+  async function sha256hex(buffer: ArrayBuffer): Promise<string> {
+    const hash = await crypto.subtle.digest("SHA-256", buffer);
+    return Array.from(new Uint8Array(hash))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  }
 
   const resetUpload = () => {
     setUploadVariant("NO_DEF");
@@ -153,6 +163,7 @@ export default function ModelsPage() {
     setUploadFile(null);
     setUploadError(null);
     setUploadDone(null);
+    setUploadProgress(0);
     if (fileRef.current) fileRef.current.value = "";
   };
 
@@ -164,25 +175,68 @@ export default function ModelsPage() {
     setUploading(true);
     setUploadError(null);
     setUploadDone(null);
+    setUploadProgress(0);
+
     try {
-      const fd = new FormData();
-      fd.append("file", uploadFile);
-      fd.append("variant", uploadVariant);
-      fd.append("stage", uploadStage);
-      if (uploadAccuracy) fd.append("accuracy", uploadAccuracy);
-      const res = await fetch("/api/models/upload", {
+      const uploadId = crypto.randomUUID();
+      const mimeType = uploadFile.type || "application/octet-stream";
+      const totalChunks = Math.ceil(uploadFile.size / CHUNK_SIZE);
+
+      // ── Upload chunks ────────────────────────────────────────────────
+      for (let i = 0; i < totalChunks; i++) {
+        const start = i * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, uploadFile.size);
+        const buffer = await uploadFile.slice(start, end).arrayBuffer();
+        const checksum = await sha256hex(buffer);
+
+        const fd = new FormData();
+        fd.append("chunk", new Blob([buffer], { type: mimeType }));
+        fd.append("uploadId", uploadId);
+        fd.append("chunkId", String(i));
+        fd.append("checksum", checksum);
+        fd.append("totalChunks", String(totalChunks));
+
+        const chunkRes = await fetch("/api/models/upload/chunk", {
+          method: "POST",
+          body: fd,
+        });
+
+        if (!chunkRes.ok) {
+          const j = await chunkRes.json().catch(() => ({}));
+          throw new Error(
+            `Chunk ${i + 1}/${totalChunks} failed: ${j.error || chunkRes.statusText}`,
+          );
+        }
+
+        setUploadProgress(Math.round(((i + 1) / totalChunks) * 95));
+      }
+
+      // ── Finalize ─────────────────────────────────────────────────────
+      const finalRes = await fetch("/api/models/upload/finalize", {
         method: "POST",
-        body: fd,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uploadId,
+          totalChunks,
+          totalSize: uploadFile.size,
+          filename: uploadFile.name,
+          mimeType,
+          variant: uploadVariant,
+          stage: uploadStage,
+          ...(uploadAccuracy ? { accuracy: parseFloat(uploadAccuracy) } : {}),
+        }),
       });
-      const json = await res.json();
+
+      const json = await finalRes.json();
       if (!json.success) throw new Error(json.error || "Upload failed");
+
+      setUploadProgress(100);
       setUploadDone(json.data.asset.download_url);
+
       // Refresh model list
       fetch("/api/models")
         .then((r) => r.json())
-        .then((j) => {
-          if (j.success) setDbModels(j.data);
-        });
+        .then((j) => { if (j.success) setDbModels(j.data); });
     } catch (e) {
       setUploadError(e instanceof Error ? e.message : "Upload failed");
     } finally {
@@ -590,6 +644,21 @@ export default function ModelsPage() {
                 </label>
               </div>
 
+              {uploading && (
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs text-indigo-600 font-medium">
+                    <span>Uploading…</span>
+                    <span>{uploadProgress}%</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-indigo-100 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
               {uploadError && (
                 <div className="flex items-start gap-2.5 text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
                   <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -629,7 +698,7 @@ export default function ModelsPage() {
                   disabled={uploading || !uploadFile}
                 >
                   {uploading ? (
-                    "Uploading…"
+                    uploadProgress < 100 ? `Uploading… ${uploadProgress}%` : "Finalizing…"
                   ) : (
                     <>
                       <Upload className="h-4 w-4" /> Upload Model
