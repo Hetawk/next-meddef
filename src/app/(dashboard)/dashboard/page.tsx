@@ -9,25 +9,29 @@ const stats = [
     label: "Datasets",
     value: Object.keys(DATASETS).length.toString(),
     icon: Database,
-    color: "bg-blue-50 text-blue-600",
+    bg: "bg-blue-600",
+    border: "border-blue-100",
   },
   {
     label: "Model Variants",
     value: "6",
     icon: Cpu,
-    color: "bg-violet-50 text-violet-600",
+    bg: "bg-violet-600",
+    border: "border-violet-100",
   },
   {
     label: "Attack Types",
     value: "8",
     icon: FlaskConical,
-    color: "bg-amber-50 text-amber-600",
+    bg: "bg-amber-500",
+    border: "border-amber-100",
   },
   {
     label: "Defense",
     value: "DAAM",
     icon: ShieldCheck,
-    color: "bg-green-50 text-green-600",
+    bg: "bg-emerald-600",
+    border: "border-emerald-100",
   },
 ];
 
@@ -41,16 +45,16 @@ export default function DashboardPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {stats.map(({ label, value, icon: Icon, color }) => (
-          <Card key={label}>
-            <CardContent className="pt-6">
+        {stats.map(({ label, value, icon: Icon, bg, border }) => (
+          <Card key={label} className={`border ${border}`}>
+            <CardContent className="pt-5 pb-5">
               <div className="flex items-center gap-3">
-                <div className={`rounded-lg p-2 ${color}`}>
+                <div className={`rounded-lg p-2.5 ${bg} text-white shrink-0`}>
                   <Icon className="h-5 w-5" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-slate-900">{value}</p>
-                  <p className="text-xs text-slate-500">{label}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{label}</p>
                 </div>
               </div>
             </CardContent>

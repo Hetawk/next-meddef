@@ -18,12 +18,12 @@ interface ModelRow {
 }
 
 const VARIANT_COLOR: Record<string, string> = {
-  FULL: "bg-green-50 text-green-700",
-  NO_DEF: "bg-slate-50 text-slate-600",
-  NO_FREQ: "bg-amber-50 text-amber-700",
-  NO_PATCH: "bg-orange-50 text-orange-700",
-  NO_CBAM: "bg-pink-50 text-pink-700",
-  BASELINE: "bg-blue-50 text-blue-700",
+  FULL:      "bg-indigo-50 text-indigo-700",
+  NO_DEF:    "bg-slate-100 text-slate-600",
+  NO_FREQ:   "bg-amber-50 text-amber-700",
+  NO_PATCH:  "bg-orange-50 text-orange-700",
+  NO_CBAM:   "bg-pink-50 text-pink-700",
+  BASELINE:  "bg-emerald-50 text-emerald-700",
 };
 
 const STAGE_LABEL: Record<string, string> = {

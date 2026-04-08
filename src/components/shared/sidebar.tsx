@@ -23,23 +23,25 @@ const nav = [
 export function Sidebar() {
   const pathname = usePathname();
   return (
-    <aside className="flex h-full w-56 flex-col border-r border-slate-200 bg-white px-4 py-6 shrink-0">
-      <div className="mb-8">
-        <span className="text-lg font-bold text-slate-900">{APP.name}</span>
-        <p className="mt-0.5 text-xs text-slate-400 leading-tight">
+    <aside className="flex h-full w-56 flex-col bg-slate-900 px-4 py-6 shrink-0">
+      <div className="mb-8 px-1">
+        <span className="text-lg font-bold text-white tracking-tight">
+          {APP.name}
+        </span>
+        <p className="mt-1 text-xs text-slate-400 leading-tight">
           {APP.author}
         </p>
       </div>
-      <nav className="flex flex-col gap-1">
+      <nav className="flex flex-col gap-0.5">
         {nav.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
             href={href}
             className={cn(
-              "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+              "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
               pathname === href || pathname.startsWith(href + "/")
-                ? "bg-slate-100 text-slate-900 font-medium"
-                : "text-slate-500 hover:bg-slate-50 hover:text-slate-900",
+                ? "bg-indigo-600 text-white"
+                : "text-slate-400 hover:bg-slate-800 hover:text-white",
             )}
           >
             <Icon className="h-4 w-4 shrink-0" />
@@ -47,9 +49,10 @@ export function Sidebar() {
           </Link>
         ))}
       </nav>
-      <div className="mt-auto pt-6 text-xs text-slate-400 leading-relaxed">
-        <p>Supervisor: {APP.supervisor}</p>
-        <p className="text-slate-300">({APP.supervisorZh})</p>
+      <div className="mt-auto pt-6 border-t border-slate-700 text-xs text-slate-500 leading-relaxed">
+        <p className="text-slate-400">Supervisor</p>
+        <p className="font-medium text-slate-300">{APP.supervisor}</p>
+        <p className="text-slate-500">{APP.supervisorZh}</p>
       </div>
     </aside>
   );

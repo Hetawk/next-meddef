@@ -178,10 +178,10 @@ export default function ResultsPage() {
                               <span
                                 className={
                                   acc >= 0.7
-                                    ? "text-green-600 font-medium"
+                                    ? "text-emerald-600 font-semibold"
                                     : acc >= 0.5
-                                      ? "text-amber-600"
-                                      : "text-red-600"
+                                    ? "text-amber-600 font-medium"
+                                    : "text-red-500 font-medium"
                                 }
                               >
                                 {(acc * 100).toFixed(1)}%

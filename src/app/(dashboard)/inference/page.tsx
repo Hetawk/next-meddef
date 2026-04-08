@@ -8,7 +8,7 @@ import { Select } from "@/components/ui/select";
 import { DATASETS, ATTACK_EPSILONS, type AttackType } from "@/types/index";
 import { APP } from "@/lib/config";
 import { formatConfidence } from "@/lib/utils";
-import { Upload, Play, Loader2, AlertCircle } from "lucide-react";
+import { Upload, Play, Loader2, AlertCircle, FlaskConical } from "lucide-react";
 
 interface ModelOption {
   id: string;
@@ -240,7 +240,7 @@ export default function InferencePage() {
                 onDrop={handleDrop}
                 onDragOver={(e) => e.preventDefault()}
                 onClick={() => fileInputRef.current?.click()}
-                className="relative flex h-32 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 hover:border-slate-400 transition-colors"
+                className="relative flex h-32 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-indigo-200 bg-indigo-50/30 hover:border-indigo-400 hover:bg-indigo-50 transition-colors"
               >
                 <input
                   ref={fileInputRef}
@@ -257,9 +257,9 @@ export default function InferencePage() {
                     className="h-full w-full rounded-lg object-contain p-2"
                   />
                 ) : (
-                  <div className="flex flex-col items-center gap-1 text-slate-500">
+                  <div className="flex flex-col items-center gap-1 text-indigo-400">
                     <Upload className="h-6 w-6" />
-                    <p className="text-xs">Drop image or click to browse</p>
+                    <p className="text-xs font-medium text-indigo-500">Drop image or click to browse</p>
                   </div>
                 )}
               </div>
@@ -299,9 +299,12 @@ export default function InferencePage() {
             )}
 
             {!result && !error && (
-              <p className="text-sm text-slate-400">
-                Results will appear here after inference.
-              </p>
+              <div className="flex flex-col items-center justify-center h-40 text-center gap-2">
+                <FlaskConical className="h-8 w-8 text-slate-300" />
+                <p className="text-sm text-slate-400">
+                  Configure and run inference to see results
+                </p>
+              </div>
             )}
 
             {result && (
@@ -342,9 +345,9 @@ export default function InferencePage() {
                           <span>{cls}</span>
                           <span>{formatConfidence(prob)}</span>
                         </div>
-                        <div className="h-1.5 w-full rounded-full bg-slate-100">
+                        <div className="h-2 w-full rounded-full bg-slate-100">
                           <div
-                            className="h-1.5 rounded-full bg-blue-500 transition-all duration-500"
+                            className="h-2 rounded-full bg-indigo-500 transition-all duration-500"
                             style={{ width: `${(prob * 100).toFixed(1)}%` }}
                           />
                         </div>
