@@ -19,6 +19,8 @@ const RegisterSchema = z.object({
   stage: z.nativeEnum(ModelStage, {
     error: `stage must be one of: ${Object.values(ModelStage).join(", ")}`,
   }),
+  name: z.string().min(1).optional(),
+  displayName: z.string().min(1).optional(),
   accuracy: z.number().min(0).max(1).optional(),
 });
 
@@ -36,18 +38,20 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { url, variant, stage, accuracy } = parsed.data;
-  const modelName = `${variant}_${stage}`;
+  const { url, variant, stage, accuracy, name: nameOverride, displayName: displayNameOverride } = parsed.data;
+  const modelName = nameOverride ?? `${variant}_${stage}`;
+  const modelDisplayName = displayNameOverride ?? `${variant} — ${stage.replace(/_/g, " ")}`;
 
   const model = await db.model.upsert({
     where: { name: modelName },
     update: {
       onnxPath: url,
+      ...(displayNameOverride ? { displayName: displayNameOverride } : {}),
       ...(accuracy != null ? { accuracy } : {}),
     },
     create: {
       name: modelName,
-      displayName: `${variant} — ${stage.replace(/_/g, " ")}`,
+      displayName: modelDisplayName,
       variant,
       stage,
       format: "ONNX",
