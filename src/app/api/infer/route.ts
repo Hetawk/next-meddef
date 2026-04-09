@@ -109,14 +109,12 @@ export async function POST(request: NextRequest) {
 
   const { modelFile, tensor, attack, epsilon } = parsed.data;
 
-  // 3. Check model file exists on disk (extra guard — already allowlisted by Zod)
-  const modelPath = path.join(
-    process.cwd(),
-    "public",
-    "models",
-    "onnx",
-    modelFile,
-  );
+  // 3. Resolve model path — prefer MODEL_DIR env var (VPS absolute path),
+  //    fall back to public/models/onnx/ for local dev.
+  const modelDir =
+    process.env.MODEL_DIR ||
+    path.join(process.cwd(), "public", "models", "onnx");
+  const modelPath = path.join(modelDir, modelFile);
   if (!fs.existsSync(modelPath)) {
     return NextResponse.json(
       { error: `Model file not found on server: ${modelFile}` },
