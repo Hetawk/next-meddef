@@ -407,12 +407,18 @@ export default function InferencePage() {
           ? "Running inference\u2026"
           : `Running clean + ${attack} attack\u2026`,
       );
+      // Encode Float32Array as base64 binary (~800 KB) instead of a JSON
+      // number array (~2.5 MB) to stay under nginx's 1 MB body limit.
+      const tensorB64 = btoa(
+        String.fromCharCode(...new Uint8Array(tensor.buffer)),
+      );
+
       const res = await fetch("/api/infer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           modelFile: selectedModel.onnxFile,
-          tensor: Array.from(tensor),
+          tensorB64,
           attack,
           epsilon,
         }),

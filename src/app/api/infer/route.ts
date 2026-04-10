@@ -3,6 +3,7 @@ import * as ort from "onnxruntime-node";
 import path from "path";
 import fs from "fs";
 import { z } from "zod";
+import { resolveModelDir } from "@/lib/model-path";
 
 // ── Zod schema — validates every field at the boundary ──────────────────────
 const ALLOWED_MODELS = [
@@ -23,11 +24,14 @@ const ATTACK_TYPES = [
   "SQUARE",
 ] as const;
 
+const EXPECTED_FLOATS = 3 * 224 * 224; // 150 528
+const EXPECTED_BYTES = EXPECTED_FLOATS * 4; // 602 112
+
 const InferRequestSchema = z.object({
   modelFile: z.enum(ALLOWED_MODELS),
-  tensor: z.array(z.number()).length(3 * 224 * 224, {
-    message: `tensor must have exactly ${3 * 224 * 224} float32 elements`,
-  }),
+  // Base64-encoded little-endian float32 array (≈800 KB vs ≈2.5 MB JSON).
+  // Avoids nginx 413 Payload Too Large when sending 150k floats as JSON text.
+  tensorB64: z.string().min(1, "tensorB64 is required"),
   attack: z.enum(ATTACK_TYPES).default("CLEAN"),
   epsilon: z.number().min(0).max(1).default(0),
 });
@@ -107,13 +111,36 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { modelFile, tensor, attack, epsilon } = parsed.data;
+  const { modelFile, tensorB64, attack, epsilon } = parsed.data;
 
-  // 3. Resolve model path — prefer MODEL_DIR env var (VPS absolute path),
-  //    fall back to public/models/onnx/ for local dev.
-  const modelDir =
-    process.env.MODEL_DIR ||
-    path.join(process.cwd(), "public", "models", "onnx");
+  // 3a. Decode base64 → Buffer → Float32Array and validate byte length.
+  let cleanFloat32: Float32Array;
+  try {
+    const buf = Buffer.from(tensorB64, "base64");
+    if (buf.byteLength !== EXPECTED_BYTES) {
+      return NextResponse.json(
+        {
+          error: `tensorB64 decoded to ${buf.byteLength} bytes; expected ${EXPECTED_BYTES} (${EXPECTED_FLOATS} float32 values)`,
+        },
+        { status: 422 },
+      );
+    }
+    // Use the underlying ArrayBuffer — offset 0, correct byte length.
+    cleanFloat32 = new Float32Array(
+      buf.buffer,
+      buf.byteOffset,
+      EXPECTED_FLOATS,
+    );
+  } catch {
+    return NextResponse.json(
+      { error: "tensorB64 is not valid base64" },
+      { status: 422 },
+    );
+  }
+
+  // 3b. Resolve model path via shared helper (MODEL_DIR env var → known VPS
+  //    path → local dev public/models/onnx).
+  const modelDir = resolveModelDir();
   const modelPath = path.join(modelDir, modelFile);
   if (!fs.existsSync(modelPath)) {
     return NextResponse.json(
@@ -126,7 +153,6 @@ export async function POST(request: NextRequest) {
     const session = await getSession(modelPath);
     const inputName = session.inputNames[0];
     const outputKey = session.outputNames[0];
-    const cleanFloat32 = new Float32Array(tensor);
 
     // 4. Clean inference
     const cleanTensor = new ort.Tensor(

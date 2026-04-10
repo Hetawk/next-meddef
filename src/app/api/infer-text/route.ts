@@ -3,6 +3,7 @@ import * as ort from "onnxruntime-node";
 import path from "path";
 import fs from "fs";
 import { z } from "zod";
+import { resolveModelDir } from "@/lib/model-path";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const MODEL_FILE = "llmshield_distilbert.onnx";
@@ -17,13 +18,6 @@ const InferTextSchema = z.object({
 // ── Session + vocab caches ───────────────────────────────────────────────────
 let cachedSession: ort.InferenceSession | null = null;
 let cachedVocab: Map<string, number> | null = null;
-
-function resolveModelDir(): string {
-  return (
-    process.env.MODEL_DIR ||
-    path.join(process.cwd(), "public", "models", "onnx")
-  );
-}
 
 async function getSession(): Promise<ort.InferenceSession> {
   if (!cachedSession) {
