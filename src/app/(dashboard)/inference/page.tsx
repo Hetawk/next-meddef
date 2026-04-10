@@ -409,9 +409,15 @@ export default function InferencePage() {
       );
       // Encode Float32Array as base64 binary (~800 KB) instead of a JSON
       // number array (~2.5 MB) to stay under nginx's 1 MB body limit.
-      const tensorB64 = btoa(
-        String.fromCharCode(...new Uint8Array(tensor.buffer)),
-      );
+      // Chunked to avoid "Maximum call stack size exceeded" from spreading
+      // 600 K bytes as individual function arguments.
+      const bytes = new Uint8Array(tensor.buffer);
+      let binaryStr = "";
+      const CHUNK = 8192;
+      for (let i = 0; i < bytes.length; i += CHUNK) {
+        binaryStr += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+      }
+      const tensorB64 = btoa(binaryStr);
 
       const res = await fetch("/api/infer", {
         method: "POST",
