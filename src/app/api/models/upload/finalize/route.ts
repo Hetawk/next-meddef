@@ -66,8 +66,16 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { uploadId, totalChunks, totalSize, filename, mimeType, variant, stage, accuracy } =
-    parsed.data;
+  const {
+    uploadId,
+    totalChunks,
+    totalSize,
+    filename,
+    mimeType,
+    variant,
+    stage,
+    accuracy,
+  } = parsed.data;
 
   // Tell the assets server to assemble the chunks
   const upstream = await fetch(`${ASSETS_BASE}/upload/finalize`, {
@@ -90,7 +98,10 @@ export async function POST(req: NextRequest) {
   if (!upstream.ok) {
     const text = await upstream.text();
     return NextResponse.json(
-      { success: false, error: `Assets finalize failed (${upstream.status}): ${text}` },
+      {
+        success: false,
+        error: `Assets finalize failed (${upstream.status}): ${text}`,
+      },
       { status: 502 },
     );
   }
@@ -98,7 +109,10 @@ export async function POST(req: NextRequest) {
   const asset = await upstream.json();
   if (!asset.success) {
     return NextResponse.json(
-      { success: false, error: asset.error || "Assets server returned failure" },
+      {
+        success: false,
+        error: asset.error || "Assets server returned failure",
+      },
       { status: 502 },
     );
   }

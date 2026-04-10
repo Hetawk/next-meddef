@@ -199,7 +199,12 @@ export async function uploadModelAssetChunked(
     file_size: data.fileSize || file.size,
     mime_type: data.mimeType || mimeType,
     project_name: "MedDef",
-    tags: ["meddef", "onnx", meta.variant.toLowerCase(), meta.stage.toLowerCase()],
+    tags: [
+      "meddef",
+      "onnx",
+      meta.variant.toLowerCase(),
+      meta.stage.toLowerCase(),
+    ],
     storage_path: data.storagePath || data.filePath || "",
     created_at: data.createdAt || new Date().toISOString(),
   } satisfies AssetUploadResponse;

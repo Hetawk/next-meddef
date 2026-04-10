@@ -8,6 +8,7 @@ import {
   Database,
   BarChart3,
   Cpu,
+  MessageSquareWarning,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { APP } from "@/lib/config";
@@ -15,6 +16,7 @@ import { APP } from "@/lib/config";
 const nav = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/inference", label: "Inference", icon: FlaskConical },
+  { href: "/text-inference", label: "LLMShield", icon: MessageSquareWarning },
   { href: "/datasets", label: "Datasets", icon: Database },
   { href: "/models", label: "Models", icon: Cpu },
   { href: "/results", label: "Results", icon: BarChart3 },

@@ -19,9 +19,7 @@ const UploadSchema = z.object({
     .string()
     .optional()
     .transform((v) => (v && v !== "" ? parseFloat(v) : undefined))
-    .pipe(
-      z.number().min(0).max(1).optional(),
-    ),
+    .pipe(z.number().min(0).max(1).optional()),
 });
 
 export async function POST(req: NextRequest) {

@@ -21,15 +21,15 @@ Inference runs entirely **in the browser via ONNX Runtime (CPU)** — no backend
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | Next.js 16 (App Router, Turbopack) |
-| Language | TypeScript 5 |
-| ORM | Prisma 7 (PostgreSQL) |
-| Styling | Tailwind CSS v4 + shadcn-style components |
-| Validation | Zod |
-| Inference | onnxruntime-node (server-side ONNX) |
-| Icons | lucide-react |
+| Layer      | Technology                                |
+| ---------- | ----------------------------------------- |
+| Framework  | Next.js 16 (App Router, Turbopack)        |
+| Language   | TypeScript 5                              |
+| ORM        | Prisma 7 (PostgreSQL)                     |
+| Styling    | Tailwind CSS v4 + shadcn-style components |
+| Validation | Zod                                       |
+| Inference  | onnxruntime-node (server-side ONNX)       |
+| Icons      | lucide-react                              |
 
 ---
 
@@ -46,11 +46,11 @@ Inference runs entirely **in the browser via ONNX Runtime (CPU)** — no backend
 
 ## Supported Datasets & Models
 
-| Dataset Key | Name | Classes | Model |
-|-------------|------|---------|-------|
-| `roct` | Retinal OCT | 4 (CNV, DME, Drusen, Normal) | MedDef1 |
-| `chest_xray` | Chest X-Ray (Pneumonia) | 2 (Normal, Pneumonia) | MedDef1 |
-| `tbcr` | Tuberculosis Chest X-Ray | 2 (Normal, Tuberculosis) | VISTA NO_DEF Distill v2 |
+| Dataset Key  | Name                     | Classes                      | Model                   |
+| ------------ | ------------------------ | ---------------------------- | ----------------------- |
+| `roct`       | Retinal OCT              | 4 (CNV, DME, Drusen, Normal) | MedDef1                 |
+| `chest_xray` | Chest X-Ray (Pneumonia)  | 2 (Normal, Pneumonia)        | MedDef1                 |
+| `tbcr`       | Tuberculosis Chest X-Ray | 2 (Normal, Tuberculosis)     | VISTA NO_DEF Distill v2 |
 
 ---
 
@@ -90,6 +90,7 @@ public/models/onnx/vista_no_def_tbcr.onnx
 ```
 
 > Normalization used at inference time:
+>
 > - `roct`: mean `[0.1934, 0.1934, 0.1934]`, std `[0.1934, 0.1934, 0.1934]`
 > - `chest_xray`: mean `[0.4823, 0.4823, 0.4823]`, std `[0.2216, 0.2216, 0.2216]`
 > - `tbcr` (VISTA / Ultralytics): mean `[0, 0, 0]`, std `[1, 1, 1]` (÷255 only)
@@ -106,15 +107,15 @@ Open [http://localhost:3000](http://localhost:3000) — redirects automatically 
 
 ## Scripts
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start development server (Turbopack) |
-| `npm run build` | Production build |
-| `npm run lint` | ESLint |
-| `npm run db:generate` | Regenerate Prisma client |
-| `npm run db:migrate` | Run database migrations |
-| `npm run db:studio` | Open Prisma Studio |
-| `npm run db:seed` | Seed initial data |
+| Command               | Description                          |
+| --------------------- | ------------------------------------ |
+| `npm run dev`         | Start development server (Turbopack) |
+| `npm run build`       | Production build                     |
+| `npm run lint`        | ESLint                               |
+| `npm run db:generate` | Regenerate Prisma client             |
+| `npm run db:migrate`  | Run database migrations              |
+| `npm run db:studio`   | Open Prisma Studio                   |
+| `npm run db:seed`     | Seed initial data                    |
 
 ---
 
@@ -151,18 +152,17 @@ public/
 
 ## Contact
 
-| | |
-|---|---|
-| Student email | enoch.dongbo@stu.ujn.edu.cn |
-| Personal email | ekd@ekddigital.com |
-| Phone | +86 185 0683 2159 |
+|                |                             |
+| -------------- | --------------------------- |
+| Student email  | enoch.dongbo@stu.ujn.edu.cn |
+| Personal email | ekd@ekddigital.com          |
+| Phone          | +86 185 0683 2159           |
 
 ---
 
 ## License
 
 MIT
-
 
 > Author: Enoch Kwateh Dongbo (东博)  
 > Supervisor: Niu Sijie (牛四杰)
@@ -173,16 +173,16 @@ A Next.js web application for running and visualizing adversarial robustness eva
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | Next.js 16 (App Router, Turbopack) |
-| Language | TypeScript 5 |
-| ORM | Prisma 7 (PostgreSQL, driver adapter) |
-| Styling | Tailwind CSS v4 + shadcn-style components |
-| Validation | Zod |
-| Forms | React Hook Form + @hookform/resolvers |
-| Inference | onnxruntime-web |
-| Icons | lucide-react |
+| Layer      | Technology                                |
+| ---------- | ----------------------------------------- |
+| Framework  | Next.js 16 (App Router, Turbopack)        |
+| Language   | TypeScript 5                              |
+| ORM        | Prisma 7 (PostgreSQL, driver adapter)     |
+| Styling    | Tailwind CSS v4 + shadcn-style components |
+| Validation | Zod                                       |
+| Forms      | React Hook Form + @hookform/resolvers     |
+| Inference  | onnxruntime-web                           |
+| Icons      | lucide-react                              |
 
 ---
 
@@ -198,12 +198,12 @@ A Next.js web application for running and visualizing adversarial robustness eva
 
 ## Datasets
 
-| Key | Name | Classes |
-|-----|------|---------|
-| `tbcr` | Tuberculosis Chest X-Ray | 2 (Normal, Tuberculosis) |
-| `ccts` | Chest CT Scan | 4 (lung cancer subtypes) |
-| `multic` | Multi-Cancer | 8 (multi-organ) |
-| `scisic` | Skin Cancer (ISIC) | 9 (dermoscopy) |
+| Key      | Name                     | Classes                  |
+| -------- | ------------------------ | ------------------------ |
+| `tbcr`   | Tuberculosis Chest X-Ray | 2 (Normal, Tuberculosis) |
+| `ccts`   | Chest CT Scan            | 4 (lung cancer subtypes) |
+| `multic` | Multi-Cancer             | 8 (multi-organ)          |
+| `scisic` | Skin Cancer (ISIC)       | 9 (dermoscopy)           |
 
 ---
 
@@ -234,6 +234,7 @@ npm run db:generate   # regenerate Prisma client
 ### 4. Add ONNX models (optional)
 
 Place exported `.onnx` files in:
+
 ```
 public/models/onnx/<variant>_<stage>.onnx
 ```
@@ -250,29 +251,29 @@ Open [http://localhost:3000](http://localhost:3000) — it redirects automatical
 
 ## Scripts
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start development server |
-| `npm run build` | Production build |
-| `npm run lint` | ESLint |
+| Command               | Description              |
+| --------------------- | ------------------------ |
+| `npm run dev`         | Start development server |
+| `npm run build`       | Production build         |
+| `npm run lint`        | ESLint                   |
 | `npm run db:generate` | Regenerate Prisma client |
-| `npm run db:migrate` | Run database migrations |
-| `npm run db:studio` | Open Prisma Studio |
-| `npm run db:seed` | Seed initial data |
+| `npm run db:migrate`  | Run database migrations  |
+| `npm run db:studio`   | Open Prisma Studio       |
+| `npm run db:seed`     | Seed initial data        |
 
 ---
 
 ## API Routes
 
-| Method | Route | Description |
-|--------|-------|-------------|
-| GET | `/api/datasets` | List datasets |
-| POST | `/api/datasets` | Seed datasets from constants |
-| GET | `/api/models` | List models |
-| GET | `/api/inferences` | List inferences (filterable) |
-| POST | `/api/inferences` | Run and record an inference |
-| GET | `/api/evaluations` | List evaluations (filterable) |
-| POST | `/api/evaluations` | Upsert an evaluation result |
+| Method | Route              | Description                   |
+| ------ | ------------------ | ----------------------------- |
+| GET    | `/api/datasets`    | List datasets                 |
+| POST   | `/api/datasets`    | Seed datasets from constants  |
+| GET    | `/api/models`      | List models                   |
+| GET    | `/api/inferences`  | List inferences (filterable)  |
+| POST   | `/api/inferences`  | Run and record an inference   |
+| GET    | `/api/evaluations` | List evaluations (filterable) |
+| POST   | `/api/evaluations` | Upsert an evaluation result   |
 
 ---
 
@@ -306,3 +307,13 @@ prisma/
 ## License
 
 MIT
+
+
+```bash
+
+https://es.ekddigital.com/models/2026/vista_no_def_tbcr.onnx
+https://es.ekddigital.com/models/2026/meddef1_chest_xray.onnx
+https://es.ekddigital.com/models/2026/meddef1_roct.onnx
+https://es.ekddigital.com/models/2026/llmshield_distilbert.onnx
+
+```
