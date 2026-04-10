@@ -116,6 +116,7 @@ const ApiResponseSchema = z.object({
   logits: z.array(z.number()),
   elapsedMs: z.number(),
   tokenCount: z.number(),
+  detectionLayer: z.enum(["neural", "rule-based"]).optional(),
 });
 
 type TextResult = z.infer<typeof ApiResponseSchema>;
@@ -333,6 +334,11 @@ export default function TextInferencePage() {
                       </div>
                       <p className="text-sm text-slate-500 mt-0.5">
                         {result.tokenCount} tokens · {result.elapsedMs} ms
+                        {result.detectionLayer === "rule-based" && (
+                          <span className="ml-2 text-xs font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+                            rule-based
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>

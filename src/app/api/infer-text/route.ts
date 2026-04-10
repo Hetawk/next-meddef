@@ -128,6 +128,49 @@ function softmax(logits: number[]): number[] {
   return exps.map((e) => e / sum);
 }
 
+// ── Rule-based fallback layer ─────────────────────────────────────────────────
+// Catches adversarial prompts that fall outside the neural classifier's training
+// distribution — medical fraud, indirect harm, obfuscated instructions, etc.
+// This implements the "rule-based attack pattern detection" layer described in
+// the LLMShield pipeline (Chapter 5, Section 5.2.2).
+const HARMFUL_PATTERNS: RegExp[] = [
+  // Medical fraud / falsification
+  /manipulate.{0,40}(x.?ray|scan|mri|ct|image|result|report)/i,
+  /falsif.{0,30}(medical|result|report|record|diagnosis)/i,
+  /fake.{0,30}(medical|diagnosis|sick|disease|result)/i,
+  /appear.{0,20}(sick|ill|positive|negative).{0,30}(money|fraud|insurance|claim)/i,
+  /make.{0,20}(person|patient|someone).{0,30}(appear|look|seem).{0,20}(sick|ill|positive)/i,
+  // Medical harm
+  /lethal.{0,30}(dose|dosage|amount|quantity)/i,
+  /how.{0,20}(to|do|can).{0,30}(overdose|kill|poison).{0,20}(patient|person|someone)/i,
+  /synthe?si[sz]e?.{0,30}(drug|opioid|fentanyl|methamphetamine|cocaine|bioweapon)/i,
+  /bioweapon|weaponi[sz]e?.{0,30}(virus|bacteria|pathogen)/i,
+  /cultivat.{0,30}(pathogen|virus|bacteria|anthrax|plague)/i,
+  // Fraud / financial crime
+  /insurance.{0,30}(fraud|scam|claim).{0,30}(sick|medical|fake)/i,
+  /get.{0,30}money.{0,30}(fake|false|manipulat).{0,30}(medical|sick|result)/i,
+  // Cyberattack / exploit
+  /exploit.{0,30}(vulnerabilit|system|software|server|database)/i,
+  /sql.{0,10}injection|xss.{0,10}attack|remote.{0,10}code.{0,10}execution/i,
+  /ransomware|malware|keylogger|rootkit|backdoor.{0,20}(install|create|deploy)/i,
+  /hack.{0,20}(into|access).{0,30}(database|server|system|network|account)/i,
+  // Weapons / violence
+  /how.{0,20}(to|do).{0,30}(make|build|create|assemble).{0,30}(bomb|explosive|weapon|gun)/i,
+  /step.{0,10}by.{0,10}step.{0,20}(kill|murder|attack|shoot)/i,
+  // Dicom / medical imaging manipulation
+  /dicom.{0,40}(manipulat|modif|alter|tamper|edit)/i,
+  /alter.{0,30}(medical.image|scan|mri|ct.scan|radiolog)/i,
+];
+
+function ruleBasedCheck(text: string): { triggered: boolean; pattern?: string } {
+  for (const re of HARMFUL_PATTERNS) {
+    if (re.test(text)) {
+      return { triggered: true, pattern: re.source };
+    }
+  }
+  return { triggered: false };
+}
+
 // ── Route handler ────────────────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
   let rawBody: unknown;
@@ -170,15 +213,21 @@ export async function POST(request: NextRequest) {
 
     const logits = Array.from(outputs.logits.data as Float32Array);
     const probs = softmax(logits);
-    const predIdx = probs[1] > probs[0] ? 1 : 0;
+
+    // Rule-based fallback: override neural result if a harmful pattern is matched
+    const ruleCheck = ruleBasedCheck(text);
+    const predIdx = ruleCheck.triggered ? 1 : (probs[1] > probs[0] ? 1 : 0);
 
     return NextResponse.json({
       label: LABELS[predIdx],
-      confidence: probs[predIdx],
-      probabilities: { safe: probs[0], harmful: probs[1] },
+      confidence: ruleCheck.triggered ? 0.99 : probs[predIdx],
+      probabilities: ruleCheck.triggered
+        ? { safe: 0.01, harmful: 0.99 }
+        : { safe: probs[0], harmful: probs[1] },
       logits,
       elapsedMs,
       tokenCount: inputIds.filter((v) => v !== BigInt(0)).length,
+      detectionLayer: ruleCheck.triggered ? "rule-based" : "neural",
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown inference error";
