@@ -9,6 +9,7 @@ import {
   BarChart3,
   Cpu,
   MessageSquareWarning,
+  Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { APP } from "@/lib/config";
@@ -20,6 +21,7 @@ const nav = [
   { href: "/datasets", label: "Datasets", icon: Database },
   { href: "/models", label: "Models", icon: Cpu },
   { href: "/results", label: "Results", icon: BarChart3 },
+  { href: "/downloads", label: "Android", icon: Download },
 ];
 
 export function Sidebar() {
