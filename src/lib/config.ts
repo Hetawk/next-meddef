@@ -1,3 +1,8 @@
+/** Canonical production origin (no trailing slash). Override via NEXT_PUBLIC_URL for local dev. */
+export const SITE_ORIGIN = (
+  process.env.NEXT_PUBLIC_URL ?? "https://meddef.ekddigital.com"
+).replace(/\/+$/, "");
+
 export const APP = {
   name: "MedDef",
   title:

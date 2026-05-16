@@ -1,0 +1,48 @@
+{
+  "releaseDate": "2026-05-16",
+  "releaseNotes": "MedDef client for ONNX imaging and optional text inference against your configured API.",
+  "platforms": {
+    "android": {
+      "version": "1.0.0",
+      "versionCode": 100,
+      "url": "/downloads/meddef.apk",
+      "filename": "meddef.apk",
+      "format": "APK",
+      "status": "available",
+      "sizeBytes": null,
+      "sha256": null
+    },
+    "ios": {
+      "version": "1.0.0",
+      "url": null,
+      "format": "IPA / TestFlight",
+      "status": "external",
+      "externalUrl": null,
+      "notes": "iOS builds are distributed via TestFlight or the App Store. Direct IPA downloads are not offered here for signing and provisioning reasons."
+    },
+    "macos": {
+      "version": null,
+      "url": null,
+      "filename": "meddef-macos.dmg",
+      "format": "DMG",
+      "status": "coming_soon",
+      "notes": "macOS desktop build will be published when CI produces a signed .dmg or .app.zip."
+    },
+    "windows": {
+      "version": null,
+      "url": null,
+      "filename": "meddef-setup.exe",
+      "format": "EXE / MSIX",
+      "status": "coming_soon",
+      "notes": "Windows installer will be published when CI produces an .exe or MSIX package."
+    },
+    "linux": {
+      "version": null,
+      "url": null,
+      "filename": null,
+      "format": "AppImage (planned)",
+      "status": "coming_soon",
+      "notes": "Linux is not available for download yet. Use Android, iOS, macOS, or Windows builds below, or check back later."
+    }
+  }
+}

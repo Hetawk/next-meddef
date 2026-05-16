@@ -21,7 +21,7 @@ const nav = [
   { href: "/datasets", label: "Datasets", icon: Database },
   { href: "/models", label: "Models", icon: Cpu },
   { href: "/results", label: "Results", icon: BarChart3 },
-  { href: "/downloads", label: "Android", icon: Download },
+  { href: "/downloads", label: "Downloads", icon: Download },
 ];
 
 export function Sidebar() {

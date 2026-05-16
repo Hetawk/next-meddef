@@ -1,0 +1,149 @@
+name: Sync mobile downloads
+
+# Triggered by meddef_mobile android-apk workflow (repository_dispatch) or manually.
+#
+# Secrets (next-meddef repo → Settings → Secrets):
+#   MOBILE_REPO_TOKEN             — PAT: read actions + contents on meddef_mobile
+#   MOBILE_REPO                   — e.g. your-org/meddef_mobile
+#   EKD_DIGITAL_ASSETS_API_SECRET — optional; upload APK when not already on CDN
+#   EKD_DIGITAL_ASSETS_API_URL      — optional API base
+#
+# meddef_mobile must also have NEXT_MEDDEF_DISPATCH_TOKEN + NEXT_MEDDEF_REPO for auto-trigger.
+
+on:
+  repository_dispatch:
+    types: [mobile-apk-published]
+  workflow_dispatch:
+    inputs:
+      apk_artifact_run_id:
+        description: "meddef_mobile android-apk workflow run id (fallback when APK not on CDN)"
+        required: false
+        type: string
+      commit_apk:
+        description: "Commit meddef.apk to public/downloads (only if < ~50 MB; prefer CDN)"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Resolve payload from dispatch or inputs
+        id: payload
+        env:
+          DISPATCH_APK_URL: ${{ github.event.client_payload.apk_url }}
+          DISPATCH_SHA256: ${{ github.event.client_payload.sha256 }}
+          DISPATCH_SIZE: ${{ github.event.client_payload.size_bytes }}
+          DISPATCH_VERSION: ${{ github.event.client_payload.version }}
+          DISPATCH_VERSION_CODE: ${{ github.event.client_payload.version_code }}
+          DISPATCH_RUN_ID: ${{ github.event.client_payload.mobile_run_id }}
+          DISPATCH_USE_CDN: ${{ github.event.client_payload.use_cdn }}
+          INPUT_RUN_ID: ${{ inputs.apk_artifact_run_id }}
+        run: |
+          if [ -n "$DISPATCH_APK_URL" ]; then
+            echo "apk_url=$DISPATCH_APK_URL" >> "$GITHUB_OUTPUT"
+            echo "sha256=$DISPATCH_SHA256" >> "$GITHUB_OUTPUT"
+            echo "size_bytes=$DISPATCH_SIZE" >> "$GITHUB_OUTPUT"
+            echo "version=$DISPATCH_VERSION" >> "$GITHUB_OUTPUT"
+            echo "version_code=$DISPATCH_VERSION_CODE" >> "$GITHUB_OUTPUT"
+            echo "mobile_run_id=$DISPATCH_RUN_ID" >> "$GITHUB_OUTPUT"
+            echo "use_cdn=$DISPATCH_USE_CDN" >> "$GITHUB_OUTPUT"
+          else
+            echo "mobile_run_id=$INPUT_RUN_ID" >> "$GITHUB_OUTPUT"
+            echo "use_cdn=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout meddef_mobile (sync-version-json.js)
+        if: secrets.MOBILE_REPO != '' && secrets.MOBILE_REPO_TOKEN != ''
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ secrets.MOBILE_REPO }}
+          token: ${{ secrets.MOBILE_REPO_TOKEN }}
+          path: meddef_mobile
+          fetch-depth: 1
+
+      - name: Download APK artifact from meddef_mobile CI
+        id: artifact
+        if: >-
+          (steps.payload.outputs.apk_url == '' || !startsWith(steps.payload.outputs.apk_url, 'http')) &&
+          steps.payload.outputs.mobile_run_id != '' &&
+          secrets.MOBILE_REPO_TOKEN != ''
+        env:
+          GH_TOKEN: ${{ secrets.MOBILE_REPO_TOKEN }}
+          RUN_ID: ${{ steps.payload.outputs.mobile_run_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p public/downloads /tmp/mobile-artifacts
+          gh run download "$RUN_ID" \
+            --repo "${{ secrets.MOBILE_REPO }}" \
+            --name meddef-apk \
+            --dir /tmp/mobile-artifacts
+          APK="$(find /tmp/mobile-artifacts -name 'meddef.apk' | head -1)"
+          test -n "$APK"
+          cp "$APK" public/downloads/meddef.apk
+          echo "sha256=$(sha256sum "$APK" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+          echo "size_bytes=$(stat -c%s "$APK")" >> "$GITHUB_OUTPUT"
+          echo "downloaded=true" >> "$GITHUB_OUTPUT"
+
+      - name: Upload APK to EKD Digital Assets (fallback)
+        id: ekd_upload
+        if: >-
+          steps.artifact.outputs.downloaded == 'true' &&
+          secrets.EKD_DIGITAL_ASSETS_API_SECRET != ''
+        env:
+          EKD_DIGITAL_ASSETS_API_SECRET: ${{ secrets.EKD_DIGITAL_ASSETS_API_SECRET }}
+          EKD_DIGITAL_ASSETS_API_URL: ${{ secrets.EKD_DIGITAL_ASSETS_API_URL }}
+        run: |
+          node meddef_mobile/scripts/ekd-assets-upload-apk.js public/downloads/meddef.apk \
+            | tee /tmp/ekd-upload.json
+          echo "download_url=$(jq -r .download_url /tmp/ekd-upload.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Sync manifest.json and version.json
+        env:
+          ANDROID_APK_URL: ${{ steps.ekd_upload.outputs.download_url || steps.payload.outputs.apk_url || '/downloads/meddef.apk' }}
+          ANDROID_SIZE_BYTES: ${{ steps.payload.outputs.size_bytes || steps.artifact.outputs.size_bytes }}
+          ANDROID_SHA256: ${{ steps.payload.outputs.sha256 || steps.artifact.outputs.sha256 }}
+        run: |
+          if [ -d meddef_mobile/scripts ]; then
+            node meddef_mobile/scripts/sync-version-json.js public/downloads
+          else
+            echo "::warning::MOBILE_REPO not configured — update public/downloads/manifest.json manually or add secrets."
+            exit 1
+          fi
+
+      - name: Commit manifest (and optional APK)
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/downloads/manifest.json public/downloads/version.json
+          if [ "${{ inputs.commit_apk }}" = "true" ] && [ -f public/downloads/meddef.apk ]; then
+            SIZE=$(stat -c%s public/downloads/meddef.apk)
+            if [ "$SIZE" -gt 52428800 ]; then
+              echo "::warning::meddef.apk is over 50 MB — not committing binary; use EKD CDN URL in manifest."
+            else
+              git add public/downloads/meddef.apk
+            fi
+          fi
+          if git diff --staged --quiet; then
+            echo "No manifest changes to commit."
+            exit 0
+          fi
+          git commit -m "chore(downloads): sync mobile APK manifest from CI"
+          git push
+
+      - name: Summary
+        run: |
+          echo "Downloads hub: https://meddef.ekddigital.com/downloads"
+          echo "Manifest:      https://meddef.ekddigital.com/downloads/manifest.json"
+          jq '.platforms.android | {url, sizeBytes, sha256, version}' public/downloads/manifest.json

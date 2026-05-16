@@ -32,11 +32,7 @@ async function getSession(): Promise<ort.InferenceSession> {
 
 function getVocab(): Map<string, number> {
   if (!cachedVocab) {
-    const vocabPath = path.join(
-      resolveModelDir(),
-      "tokenizer",
-      "vocab.txt",
-    );
+    const vocabPath = path.join(resolveModelDir(), "tokenizer", "vocab.txt");
     if (!fs.existsSync(vocabPath)) {
       throw new Error("Tokenizer vocab.txt not found");
     }
@@ -162,7 +158,10 @@ const HARMFUL_PATTERNS: RegExp[] = [
   /alter.{0,30}(medical.image|scan|mri|ct.scan|radiolog)/i,
 ];
 
-function ruleBasedCheck(text: string): { triggered: boolean; pattern?: string } {
+function ruleBasedCheck(text: string): {
+  triggered: boolean;
+  pattern?: string;
+} {
   for (const re of HARMFUL_PATTERNS) {
     if (re.test(text)) {
       return { triggered: true, pattern: re.source };
@@ -216,7 +215,7 @@ export async function POST(request: NextRequest) {
 
     // Rule-based fallback: override neural result if a harmful pattern is matched
     const ruleCheck = ruleBasedCheck(text);
-    const predIdx = ruleCheck.triggered ? 1 : (probs[1] > probs[0] ? 1 : 0);
+    const predIdx = ruleCheck.triggered ? 1 : probs[1] > probs[0] ? 1 : 0;
 
     return NextResponse.json({
       label: LABELS[predIdx],

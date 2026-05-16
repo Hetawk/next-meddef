@@ -1,0 +1,6 @@
+{
+  "version": "1.0.0",
+  "versionCode": 100,
+  "apkUrl": "/downloads/meddef.apk",
+  "releaseNotes": "MedDef client for ONNX imaging and optional text inference against your configured API."
+}
