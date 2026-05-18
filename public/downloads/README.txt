@@ -10,7 +10,7 @@ Artifacts (place binaries here):
   meddef-setup.exe     Windows (when built)
   meddef-linux.AppImage Linux (when built)
 
-iOS: configure platforms.ios.externalUrl in manifest.json (TestFlight / App Store).
+iOS: set platforms.ios.status to "coming_soon" until TestFlight/App Store release is ready.
 
 Linux: platforms.linux.status must be "coming_soon" with url null (no download link).
 

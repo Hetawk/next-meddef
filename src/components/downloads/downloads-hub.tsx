@@ -109,7 +109,11 @@ function buildCtaLabel(
   const label = PLATFORM_LABELS[viewing];
 
   if (artifact.status === "coming_soon") {
-    if (viewing === "linux" && opts.isViewingDetected && opts.detected === "linux") {
+    if (
+      viewing === "linux" &&
+      opts.isViewingDetected &&
+      opts.detected === "linux"
+    ) {
       return "Coming soon for Linux";
     }
     return `${label} — coming soon`;
@@ -187,6 +191,9 @@ export function DownloadsHub({ manifest, serverDetected }: Props) {
   const active = platformInManifest(manifest, selected)!;
   const href = resolveHref(active);
   const showDetectedBanner = isManifestPlatform(detected);
+  const detectedArtifact = showDetectedBanner
+    ? platformInManifest(manifest, detected)
+    : undefined;
   const linuxDetected = detected === "linux";
   const unknownDevice = detected === "unknown";
   const isViewingDetected = selected === detected;
@@ -202,14 +209,25 @@ export function DownloadsHub({ manifest, serverDetected }: Props) {
       <div className="rounded-xl bg-linear-to-br from-indigo-600 via-indigo-700 to-violet-700 p-8 text-white shadow-lg">
         <h1 className="text-3xl font-bold tracking-tight">Download MedDef</h1>
         <p className="mt-3 text-sm text-indigo-100 leading-relaxed max-w-xl">
-          Native clients for imaging and text inference.
+          Native clients for imaging and text inference. Android is available
+          now; iOS, macOS, Windows, and Linux releases are coming soon.
           {linuxDetected ? (
             <>
               {" "}
               We detected{" "}
               <span className="font-semibold text-white">Linux</span>. A native
-              Linux build is not available yet — choose Android, iOS, macOS, or
-              Windows below.
+              Linux build is not available yet — choose Android now and preview
+              upcoming platforms below.
+            </>
+          ) : showDetectedBanner &&
+            detectedArtifact?.status === "coming_soon" ? (
+            <>
+              {" "}
+              We detected{" "}
+              <span className="font-semibold text-white">
+                {PLATFORM_LABELS[detected]}
+              </span>
+              . This release is coming soon — Android is available now.
             </>
           ) : showDetectedBanner ? (
             <>
@@ -383,33 +401,35 @@ export function DownloadsHub({ manifest, serverDetected }: Props) {
           All platforms
         </h2>
         <div className="grid gap-3 sm:grid-cols-2">
-          {[...primaryTabs, ...(showLinuxTab ? [LINUX_PLATFORM] : [])].map((id) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setSelected(id)}
-              className={cn(
-                "text-left rounded-lg border p-4 transition-colors",
-                selected === id &&
-                  (id === LINUX_PLATFORM
-                    ? "border-amber-300 bg-amber-50/50"
-                    : "border-indigo-300 bg-indigo-50/50"),
-                selected !== id &&
-                  "border-slate-200 bg-white hover:border-slate-300",
-                detected === id &&
+          {[...primaryTabs, ...(showLinuxTab ? [LINUX_PLATFORM] : [])].map(
+            (id) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setSelected(id)}
+                className={cn(
+                  "text-left rounded-lg border p-4 transition-colors",
+                  selected === id &&
+                    (id === LINUX_PLATFORM
+                      ? "border-amber-300 bg-amber-50/50"
+                      : "border-indigo-300 bg-indigo-50/50"),
                   selected !== id &&
-                  (id === LINUX_PLATFORM
-                    ? "ring-1 ring-amber-200"
-                    : "ring-1 ring-indigo-200"),
-              )}
-            >
-              <PlatformCard
-                id={id}
-                artifact={platformInManifest(manifest, id)!}
-                compact
-              />
-            </button>
-          ))}
+                    "border-slate-200 bg-white hover:border-slate-300",
+                  detected === id &&
+                    selected !== id &&
+                    (id === LINUX_PLATFORM
+                      ? "ring-1 ring-amber-200"
+                      : "ring-1 ring-indigo-200"),
+                )}
+              >
+                <PlatformCard
+                  id={id}
+                  artifact={platformInManifest(manifest, id)!}
+                  compact
+                />
+              </button>
+            ),
+          )}
         </div>
       </div>
 
@@ -483,13 +503,13 @@ function PlatformCard({
           {releaseDate && !compact && (
             <span className="text-slate-400"> · released {releaseDate}</span>
           )}
-          {sizeLabel && (
-            <span className="text-slate-400"> · {sizeLabel}</span>
-          )}
+          {sizeLabel && <span className="text-slate-400"> · {sizeLabel}</span>}
         </p>
       )}
       {artifact.notes && !compact && (
-        <p className="text-xs text-slate-500 leading-relaxed">{artifact.notes}</p>
+        <p className="text-xs text-slate-500 leading-relaxed">
+          {artifact.notes}
+        </p>
       )}
       {artifact.filename && artifact.status === "available" && !compact && (
         <p className="text-xs font-mono text-slate-400">{artifact.filename}</p>

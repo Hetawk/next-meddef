@@ -9,16 +9,15 @@
       "filename": "meddef.apk",
       "format": "APK",
       "status": "available",
-      "sizeBytes": null,
+      "sizeBytes": 69784634,
       "sha256": null
     },
     "ios": {
-      "version": "1.0.0",
+      "version": null,
       "url": null,
-      "format": "IPA / TestFlight",
-      "status": "external",
-      "externalUrl": null,
-      "notes": "iOS builds are distributed via TestFlight or the App Store. Direct IPA downloads are not offered here for signing and provisioning reasons."
+      "format": "IPA / TestFlight (planned)",
+      "status": "coming_soon",
+      "notes": "iOS release is in preparation and will be distributed via TestFlight/App Store."
     },
     "macos": {
       "version": null,

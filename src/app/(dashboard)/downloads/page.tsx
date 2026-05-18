@@ -7,7 +7,7 @@ import { loadDownloadsManifest } from "@/lib/downloads-manifest";
 export const metadata: Metadata = {
   title: "Downloads",
   description:
-    "Download MedDef clients for Android, iOS, macOS, Windows, and Linux.",
+    "Download MedDef for Android. iOS, macOS, Windows, and Linux releases are coming soon.",
 };
 
 export default async function DownloadsPage() {
